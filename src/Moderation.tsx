@@ -158,6 +158,7 @@ function UserDetails({ user }: { user: Extract<ModerationDetail, { kind: 'user' 
       <Text className="overview-details">{user.bio || 'No bio provided.'}</Text>
     </section>
     <dl className="admin-user-facts">
+      <div><dt>Pronouns</dt><dd><bdi>{user.pronouns || '—'}</bdi></dd></div>
       <div><dt>Followers</dt><dd>{user.followerCount.toLocaleString()}</dd></div>
       <div><dt>Following</dt><dd>{user.followingCount.toLocaleString()}</dd></div>
       <div><dt>Joined</dt><dd><time dateTime={user.joined}>{new Date(user.joined).toLocaleDateString()}</time></dd></div>

@@ -129,7 +129,7 @@ export default function Users({ onAccessLost, onOpenUser }: { onAccessLost: () =
                   indeterminate={selected.length > 0 && !allSelected} disabled={saving !== null}
                   onChange={() => setSelected(allSelected ? [] : selectable)} />
               </th>}
-              <th scope="col">User</th><th scope="col">Bio</th><th scope="col">Joined</th><th scope="col">Role</th>
+              <th scope="col">User</th><th scope="col">Pronouns</th><th scope="col">Bio</th><th scope="col">Joined</th><th scope="col">Role</th>
               {result.canEditProfiles && <th scope="col">Actions</th>}
             </tr></thead>
             <tbody>
@@ -158,6 +158,7 @@ export default function Users({ onAccessLost, onOpenUser }: { onAccessLost: () =
                       </Button>
                       {user.bannedAt && <Tag minimal intent="danger">Banned</Tag>}
                     </td>
+                    <td className="admin-user-bio"><div><bdi>{user.pronouns || '—'}</bdi></div></td>
                     <td className="admin-user-bio"><div>{user.bio || '—'}</div></td>
                     <td><time dateTime={user.joined}>{new Date(user.joined).toLocaleDateString()}</time></td>
                     <td>{user.canEditRole
