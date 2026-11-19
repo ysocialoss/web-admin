@@ -3,12 +3,20 @@ import { z } from 'zod'
 
 const user = z.object({ id: z.uuid(), name: z.string(), handle: z.string(), joined: z.string(), avatarUrl: z.string().nullable() })
 export const roles = z.enum(['admin', 'moderator', 'og', 'user'])
+const badgeFields = z.object({ icon: z.string().regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/), tooltip: z.string() })
+const badge = badgeFields.extend({ id: z.uuid() })
+const badges = z.array(badge).default([])
+export type UserBadge = z.infer<typeof badge>
+const badgeOptions = z.object({
+  icons: z.array(z.string()),
+  presets: z.array(badgeFields.extend({ label: z.string() })),
+})
 const accountStatus = {
   bannedAt: z.string().nullable().default(null),
   banReason: z.string().nullable().default(null),
   canModerateAccount: z.boolean().default(false),
 }
-const managedUser = user.extend({ bio: z.string(), role: roles, canEditRole: z.boolean(), ...accountStatus })
+const managedUser = user.extend({ bio: z.string(), role: roles, badges, canEditRole: z.boolean(), ...accountStatus })
 export type ManagedUser = z.infer<typeof managedUser>
 export const userList = z.object({ users: z.array(managedUser), hasNextPage: z.boolean(), canEditProfiles: z.boolean() })
 
@@ -18,6 +26,22 @@ export type ProfileChange =
 
 export type BulkProfileAction = 'changeName' | 'changeBio'
 export type AccountAction = 'ban' | 'unban' | 'remove'
+export type BadgeChange =
+  | ({ action: 'add' } & z.infer<typeof badgeFields>)
+  | { action: 'remove'; id: string }
+
+export async function loadBadgeOptions(signal: AbortSignal) {
+  return badgeOptions.parse(await adminRequest('/api/admin/badge-options', signal))
+}
+
+export async function updateUserBadges(id: string, change: BadgeChange) {
+  const result = await adminRequest('/api/admin/users/' + id + '/badges', undefined, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(change),
+  })
+  return z.object({ badges: z.array(badge) }).parse(result).badges
+}
 
 export async function moderateAccount(id: string, change: { action: 'ban'; reason: string } | { action: 'unban' | 'remove' }) {
   await adminRequest('/api/admin/users/' + id + '/account', undefined, {
@@ -73,6 +97,7 @@ export const targetSchema = z.discriminatedUnion('kind', [
     kind: z.literal('user'),
     bio: z.string(),
     role: roles,
+    badges,
     canEditProfile: z.boolean(),
     ...accountStatus,
     bannerUrl: z.string().nullable(),

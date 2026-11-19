@@ -5,6 +5,7 @@ import UserAvatar from './UserAvatar'
 import { LoadingRows, LoadingStatus } from './LoadingState'
 import { Alert, Button, Callout, Card, Classes, H1, H4, NonIdealState, PopoverNext, Tag, Text } from '@blueprintjs/core'
 import { AccountActionDialog, UserActionDialog, UserActions } from './UserActions'
+import { UserBadgesDialog } from './UserBadgesDialog'
 import UserPosts from './UserPosts'
 import { PostGif, PostVoice } from './PostPreview'
 
@@ -24,6 +25,7 @@ export default function Moderation({ onAccessLost, pathname, onNavigate, onOpenP
   const [revision, setRevision] = useState(0)
   const [profileAction, setProfileAction] = useState<ProfileChange['action'] | null>(null)
   const [accountAction, setAccountAction] = useState<AccountAction | null>(null)
+  const [badgeUserId, setBadgeUserId] = useState<string | null>(null)
   const [confirmRemoval, setConfirmRemoval] = useState(false)
   const [removing, setRemoving] = useState(false)
   const [actionError, setActionError] = useState('')
@@ -72,7 +74,8 @@ export default function Moderation({ onAccessLost, pathname, onNavigate, onOpenP
       <header className="overview-heading">
         <H1 id="moderation-heading">{target?.kind === 'post' ? target.type : isUser ? 'User profile' : 'Content details'}</H1>
         {target?.kind === 'user' && target.canEditProfile && <PopoverNext placement="bottom-end"
-          content={<UserActions user={target} onAction={setProfileAction} onAccountAction={setAccountAction} />}>
+          content={<UserActions user={target} onAction={setProfileAction} onAccountAction={setAccountAction}
+            onBadges={() => setBadgeUserId(target.id)} />}>
           <Button icon="edit" endIcon="chevron-down">Profile actions</Button>
         </PopoverNext>}
         {target?.kind === 'post' && target.canRemove &&
@@ -103,6 +106,14 @@ export default function Moderation({ onAccessLost, pathname, onNavigate, onOpenP
         </>}
       </Card>
       {target?.kind === 'user' && <UserPosts userId={target.id} onAccessLost={onAccessLost} onOpenPost={onOpenProfilePost} />}
+      {target?.kind === 'user' && target.canEditProfile && target.id === badgeUserId &&
+        <UserBadgesDialog key={target.id} user={target} onClose={() => setBadgeUserId(null)} onAccessLost={onAccessLost}
+          onSaved={badges => {
+            setCompleted(current => current && 'target' in current &&
+              current.target.kind === 'user' && current.target.id === target.id
+              ? { ...current, target: { ...current.target, badges } }
+              : current)
+          }} />}
       {target?.kind === 'user' && profileAction && <UserActionDialog user={target} action={profileAction}
         onClose={() => setProfileAction(null)} onAccessLost={onAccessLost} onSaved={() => {
           setProfileAction(null)

@@ -5,10 +5,11 @@ import type { AccountAction, BulkProfileAction, ManagedUser, ProfileChange } fro
 
 type Action = ProfileChange['action']
 
-export function UserActions({ user, onAction, onAccountAction }: {
+export function UserActions({ user, onAction, onAccountAction, onBadges }: {
   user: Pick<ManagedUser, 'handle' | 'bannedAt' | 'canModerateAccount'>
   onAction: (action: Action) => void
   onAccountAction: (action: AccountAction) => void
+  onBadges: () => void
 }) {
   return <Menu aria-label={`Actions for ${user.handle}`}>
     <MenuItem text="Clear Bio" icon="eraser" onClick={() => onAction('clearBio')} />
@@ -18,6 +19,7 @@ export function UserActions({ user, onAction, onAccountAction }: {
     <MenuItem text="Change Username" icon="edit" onClick={() => onAction('changeUsername')} />
     <MenuItem text="Change Name" icon="edit" onClick={() => onAction('changeName')} />
     <MenuItem text="Change Bio" icon="edit" onClick={() => onAction('changeBio')} />
+    <MenuItem text="Manage Badges" icon="badge" onClick={onBadges} />
     {user.canModerateAccount && <>
       <MenuDivider />
       {user.bannedAt
