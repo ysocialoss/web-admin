@@ -26,7 +26,7 @@ COPY Caddyfile /etc/caddy/Caddyfile
 COPY --from=build --chown=web:web /app/dist /srv
 
 ENV SITE_ADDRESS=:8080 \
-    API_UPSTREAM=api:3100 \
+    API_URL=http://127.0.0.1:3100 \
     WEB_ROOT=/srv \
     AUTO_HTTPS=off \
     XDG_DATA_HOME=/tmp/caddy-data \
