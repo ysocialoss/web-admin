@@ -4,6 +4,7 @@ import { AdminAccessError, adminRequest, roles, updateUserRoles, userList } from
 import UserAvatar from './UserAvatar'
 import { LoadingRows, LoadingStatus } from './LoadingState'
 import { AccountActionDialog, BulkProfileActionDialog, UserActions, UserActionDialog } from './UserActions'
+import { UserBadgesDialog } from './UserBadgesDialog'
 import type { AccountAction, BulkProfileAction, ManagedUser, ProfileChange } from './adminApi'
 
 type UsersPage = ReturnType<typeof userList.parse>
@@ -22,6 +23,7 @@ export default function Users({ onAccessLost, onOpenUser }: { onAccessLost: () =
   const [profileAction, setProfileAction] = useState<{ user: ManagedUser; action: ProfileChange['action'] } | null>(null)
   const [bulkProfileAction, setBulkProfileAction] = useState<BulkProfileAction | null>(null)
   const [accountAction, setAccountAction] = useState<{ user: ManagedUser; action: AccountAction } | null>(null)
+  const [badgeUserId, setBadgeUserId] = useState<string | null>(null)
   const [notice, setNotice] = useState<{ kind: 'success' | 'error'; text: string } | null>(null)
 
   useEffect(() => {
@@ -78,6 +80,7 @@ export default function Users({ onAccessLost, onOpenUser }: { onAccessLost: () =
   const selectable = result?.canEditProfiles ? result.users.map(user => user.id) : []
   const roleTargets = result?.users.filter(user => user.canEditRole && selected.includes(user.id)).map(user => user.id) ?? []
   const allSelected = selectable.length > 0 && selected.length === selectable.length
+  const badgeUser = result?.users.find(user => user.id === badgeUserId)
 
   return <section className="overview" aria-labelledby="users-heading">
     <header className="overview-heading"><H1 id="users-heading">Users</H1></header>
@@ -134,7 +137,8 @@ export default function Users({ onAccessLost, onOpenUser }: { onAccessLost: () =
                 const actionMenu = result.canEditProfiles ? <UserActions user={user} onAction={action => {
                   setNotice(null)
                   setProfileAction({ user, action })
-                }} onAccountAction={action => { setNotice(null); setAccountAction({ user, action }) }} /> : undefined
+                }} onAccountAction={action => { setNotice(null); setAccountAction({ user, action }) }}
+                  onBadges={result.canEditBadges ? () => setBadgeUserId(user.id) : undefined} /> : undefined
 
                 return <ContextMenu key={user.id} content={actionMenu} disabled={!result.canEditProfiles || saving !== null}>
                   {({ ref, className, onContextMenu, popover }) => <tr ref={ref} className={className} onContextMenu={onContextMenu}>
@@ -180,6 +184,13 @@ export default function Users({ onAccessLost, onOpenUser }: { onAccessLost: () =
         </div>
       </div>}
     </Card>
+    {badgeUser && result?.canEditBadges && <UserBadgesDialog key={badgeUser.id} user={badgeUser}
+      onClose={() => setBadgeUserId(null)} onAccessLost={onAccessLost} onSaved={badges => {
+        setResult(current => current && {
+          ...current,
+          users: current.users.map(user => user.id === badgeUser.id ? { ...user, badges } : user),
+        })
+      }} />}
     {profileAction && <UserActionDialog {...profileAction} onClose={() => setProfileAction(null)} onAccessLost={onAccessLost}
       onSaved={updated => {
         setResult(current => current && { ...current, users: current.users.map(user => user.id === updated.id ? updated : user) })

@@ -3,14 +3,27 @@ import { z } from 'zod'
 
 const user = z.object({ id: z.uuid(), name: z.string(), handle: z.string(), joined: z.string(), avatarUrl: z.string().nullable() })
 export const roles = z.enum(['admin', 'moderator', 'og', 'user'])
+const badgeFields = z.object({ icon: z.string().regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/), tooltip: z.string() })
+const badge = badgeFields.extend({ id: z.uuid() })
+const badges = z.array(badge).default([])
+export type UserBadge = z.infer<typeof badge>
+const badgeOptions = z.object({
+  icons: z.array(z.string()),
+  presets: z.array(badgeFields.extend({ label: z.string() })),
+})
 const accountStatus = {
   bannedAt: z.string().nullable().default(null),
   banReason: z.string().nullable().default(null),
   canModerateAccount: z.boolean().default(false),
 }
-const managedUser = user.extend({ bio: z.string(), role: roles, canEditRole: z.boolean(), ...accountStatus })
+const managedUser = user.extend({ bio: z.string(), role: roles, badges, canEditRole: z.boolean(), ...accountStatus })
 export type ManagedUser = z.infer<typeof managedUser>
-export const userList = z.object({ users: z.array(managedUser), hasNextPage: z.boolean(), canEditProfiles: z.boolean() })
+export const userList = z.object({
+  users: z.array(managedUser),
+  hasNextPage: z.boolean(),
+  canEditProfiles: z.boolean(),
+  canEditBadges: z.boolean().default(false),
+})
 
 export type ProfileChange =
   | { action: 'clearBio' | 'clearAvatar' | 'clearBanner' }
@@ -18,6 +31,22 @@ export type ProfileChange =
 
 export type BulkProfileAction = 'changeName' | 'changeBio'
 export type AccountAction = 'ban' | 'unban' | 'remove'
+export type BadgeChange =
+  | ({ action: 'add' } & z.infer<typeof badgeFields>)
+  | { action: 'remove'; id: string }
+
+export async function loadBadgeOptions(signal: AbortSignal) {
+  return badgeOptions.parse(await adminRequest('/api/admin/badge-options', signal))
+}
+
+export async function updateUserBadges(id: string, change: BadgeChange) {
+  const result = await adminRequest('/api/admin/users/' + id + '/badges', undefined, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(change),
+  })
+  return z.object({ badges: z.array(badge) }).parse(result).badges
+}
 
 export async function moderateAccount(id: string, change: { action: 'ban'; reason: string } | { action: 'unban' | 'remove' }) {
   await adminRequest('/api/admin/users/' + id + '/account', undefined, {
@@ -73,7 +102,9 @@ export const targetSchema = z.discriminatedUnion('kind', [
     kind: z.literal('user'),
     bio: z.string(),
     role: roles,
+    badges,
     canEditProfile: z.boolean(),
+    canEditBadges: z.boolean().default(false),
     ...accountStatus,
     bannerUrl: z.string().nullable(),
     bannerCrop: z.object({
@@ -99,6 +130,11 @@ export type AdminOverview = z.infer<typeof overviewSchema>
 const empty: AdminOverview = { metrics: [], recentUsers: [], recentPosts: [] }
 
 export class AdminAccessError extends Error {}
+export class AdminRoleRequiredError extends Error {
+  constructor() {
+    super('This action requires an admin role.')
+  }
+}
 
 export async function adminRequest(path: string, signal?: AbortSignal, options?: RequestInit): Promise<unknown> {
   const response = await fetch(path, { ...options, credentials: 'same-origin', signal, cache: 'no-store' })
@@ -106,7 +142,7 @@ export async function adminRequest(path: string, signal?: AbortSignal, options?:
     if (response.status === 401) throw new AdminAccessError('Your session expired. Sign in again.')
     if (response.status === 403) {
       const error = z.object({ error: z.string() }).safeParse(await response.json().catch(() => null))
-      if (error.data?.error === 'admin_required') throw new Error('This action requires an admin role.')
+      if (error.data?.error === 'admin_required') throw new AdminRoleRequiredError()
       if (error.data?.error === 'invalid_origin') throw new Error('The dashboard origin is not configured for moderation actions.')
       throw new AdminAccessError('You do not have permission to access the admin dashboard.')
     }
