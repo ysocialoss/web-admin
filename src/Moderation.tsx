@@ -75,7 +75,7 @@ export default function Moderation({ onAccessLost, pathname, onNavigate, onOpenP
         <H1 id="moderation-heading">{target?.kind === 'post' ? target.type : isUser ? 'User profile' : 'Content details'}</H1>
         {target?.kind === 'user' && target.canEditProfile && <PopoverNext placement="bottom-end"
           content={<UserActions user={target} onAction={setProfileAction} onAccountAction={setAccountAction}
-            onBadges={() => setBadgeUserId(target.id)} />}>
+            onBadges={target.canEditBadges ? () => setBadgeUserId(target.id) : undefined} />}>
           <Button icon="edit" endIcon="chevron-down">Profile actions</Button>
         </PopoverNext>}
         {target?.kind === 'post' && target.canRemove &&
@@ -106,7 +106,7 @@ export default function Moderation({ onAccessLost, pathname, onNavigate, onOpenP
         </>}
       </Card>
       {target?.kind === 'user' && <UserPosts userId={target.id} onAccessLost={onAccessLost} onOpenPost={onOpenProfilePost} />}
-      {target?.kind === 'user' && target.canEditProfile && target.id === badgeUserId &&
+      {target?.kind === 'user' && target.canEditBadges && target.id === badgeUserId &&
         <UserBadgesDialog key={target.id} user={target} onClose={() => setBadgeUserId(null)} onAccessLost={onAccessLost}
           onSaved={badges => {
             setCompleted(current => current && 'target' in current &&

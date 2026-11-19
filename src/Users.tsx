@@ -138,7 +138,7 @@ export default function Users({ onAccessLost, onOpenUser }: { onAccessLost: () =
                   setNotice(null)
                   setProfileAction({ user, action })
                 }} onAccountAction={action => { setNotice(null); setAccountAction({ user, action }) }}
-                  onBadges={() => setBadgeUserId(user.id)} /> : undefined
+                  onBadges={result.canEditBadges ? () => setBadgeUserId(user.id) : undefined} /> : undefined
 
                 return <ContextMenu key={user.id} content={actionMenu} disabled={!result.canEditProfiles || saving !== null}>
                   {({ ref, className, onContextMenu, popover }) => <tr ref={ref} className={className} onContextMenu={onContextMenu}>
@@ -184,7 +184,7 @@ export default function Users({ onAccessLost, onOpenUser }: { onAccessLost: () =
         </div>
       </div>}
     </Card>
-    {badgeUser && result?.canEditProfiles && <UserBadgesDialog key={badgeUser.id} user={badgeUser}
+    {badgeUser && result?.canEditBadges && <UserBadgesDialog key={badgeUser.id} user={badgeUser}
       onClose={() => setBadgeUserId(null)} onAccessLost={onAccessLost} onSaved={badges => {
         setResult(current => current && {
           ...current,

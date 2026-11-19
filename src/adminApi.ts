@@ -18,7 +18,12 @@ const accountStatus = {
 }
 const managedUser = user.extend({ bio: z.string(), role: roles, badges, canEditRole: z.boolean(), ...accountStatus })
 export type ManagedUser = z.infer<typeof managedUser>
-export const userList = z.object({ users: z.array(managedUser), hasNextPage: z.boolean(), canEditProfiles: z.boolean() })
+export const userList = z.object({
+  users: z.array(managedUser),
+  hasNextPage: z.boolean(),
+  canEditProfiles: z.boolean(),
+  canEditBadges: z.boolean().default(false),
+})
 
 export type ProfileChange =
   | { action: 'clearBio' | 'clearAvatar' | 'clearBanner' }
@@ -99,6 +104,7 @@ export const targetSchema = z.discriminatedUnion('kind', [
     role: roles,
     badges,
     canEditProfile: z.boolean(),
+    canEditBadges: z.boolean().default(false),
     ...accountStatus,
     bannerUrl: z.string().nullable(),
     bannerCrop: z.object({
@@ -124,6 +130,11 @@ export type AdminOverview = z.infer<typeof overviewSchema>
 const empty: AdminOverview = { metrics: [], recentUsers: [], recentPosts: [] }
 
 export class AdminAccessError extends Error {}
+export class AdminRoleRequiredError extends Error {
+  constructor() {
+    super('This action requires an admin role.')
+  }
+}
 
 export async function adminRequest(path: string, signal?: AbortSignal, options?: RequestInit): Promise<unknown> {
   const response = await fetch(path, { ...options, credentials: 'same-origin', signal, cache: 'no-store' })
@@ -131,7 +142,7 @@ export async function adminRequest(path: string, signal?: AbortSignal, options?:
     if (response.status === 401) throw new AdminAccessError('Your session expired. Sign in again.')
     if (response.status === 403) {
       const error = z.object({ error: z.string() }).safeParse(await response.json().catch(() => null))
-      if (error.data?.error === 'admin_required') throw new Error('This action requires an admin role.')
+      if (error.data?.error === 'admin_required') throw new AdminRoleRequiredError()
       if (error.data?.error === 'invalid_origin') throw new Error('The dashboard origin is not configured for moderation actions.')
       throw new AdminAccessError('You do not have permission to access the admin dashboard.')
     }

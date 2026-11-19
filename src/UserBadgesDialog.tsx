@@ -1,7 +1,10 @@
 import { useEffect, useState } from 'react'
 import { Button, Callout, Dialog, DialogBody, DialogFooter, FormGroup, HTMLSelect, InputGroup } from '@blueprintjs/core'
-import { AdminAccessError, loadBadgeOptions, updateUserBadges } from './adminApi'
+import { AdminAccessError, AdminRoleRequiredError, loadBadgeOptions, updateUserBadges } from './adminApi'
 import type { BadgeChange, ManagedUser, UserBadge } from './adminApi'
+
+const adminRequiredMessage = 'Only admins can manage badges.'
+const maxIconSuggestions = 12
 
 export function UserBadgesDialog({ user, onClose, onSaved, onAccessLost }: {
   user: Pick<ManagedUser, 'id' | 'handle' | 'badges'>
@@ -23,6 +26,7 @@ export function UserBadgesDialog({ user, onClose, onSaved, onAccessLost }: {
       .catch(cause => {
         if (controller.signal.aborted) return
         if (cause instanceof AdminAccessError) onAccessLost()
+        else if (cause instanceof AdminRoleRequiredError) setLoadError(adminRequiredMessage)
         else setLoadError('Could not load badge options.')
       })
     return () => controller.abort()
@@ -31,6 +35,7 @@ export function UserBadgesDialog({ user, onClose, onSaved, onAccessLost }: {
   const icon = iconInput.trim().toLowerCase()
   const tooltip = tooltipInput.trim()
   const validIcon = options?.icons.includes(icon)
+  const iconSuggestions = options?.icons.filter(name => name.includes(icon)).slice(0, maxIconSuggestions) ?? []
   const preset = options?.presets.find(item => item.icon === icon && item.tooltip === tooltip)
   const duplicate = user.badges.some(badge => badge.icon === icon && badge.tooltip === tooltip)
 
@@ -46,6 +51,7 @@ export function UserBadgesDialog({ user, onClose, onSaved, onAccessLost }: {
       }
     } catch (cause) {
       if (cause instanceof AdminAccessError) onAccessLost()
+      else if (cause instanceof AdminRoleRequiredError) setSaveError(adminRequiredMessage)
       else setSaveError(cause instanceof Error ? cause.message : 'Could not save badges.')
     } finally {
       setSaving(false)
@@ -85,7 +91,7 @@ export function UserBadgesDialog({ user, onClose, onSaved, onAccessLost }: {
             <InputGroup id="badge-icon" list="badge-icon-options" value={iconInput} disabled={saving}
               placeholder="Search by icon name" onChange={event => setIconInput(event.currentTarget.value)}
               leftElement={validIcon ? <span className="admin-badge-preview"><BadgeIcon icon={icon} /></span> : undefined} />
-            <datalist id="badge-icon-options">{options.icons.map(name => <option key={name} value={name} />)}</datalist>
+            <datalist id="badge-icon-options">{iconSuggestions.map(name => <option key={name} value={name} />)}</datalist>
           </FormGroup>
           <FormGroup label="Tooltip" labelFor="badge-tooltip"
             helperText={duplicate ? 'This badge is already assigned.' : undefined}>
