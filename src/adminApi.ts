@@ -16,7 +16,8 @@ const accountStatus = {
   banReason: z.string().nullable().default(null),
   canModerateAccount: z.boolean().default(false),
 }
-const managedUser = user.extend({ bio: z.string(), role: roles, badges, canEditRole: z.boolean(), ...accountStatus })
+const pronouns = z.string().default('')
+const managedUser = user.extend({ bio: z.string(), pronouns, role: roles, badges, canEditRole: z.boolean(), ...accountStatus })
 export type ManagedUser = z.infer<typeof managedUser>
 export const userList = z.object({
   users: z.array(managedUser),
@@ -27,7 +28,15 @@ export const userList = z.object({
 
 export type ProfileChange =
   | { action: 'clearBio' | 'clearAvatar' | 'clearBanner' }
-  | { action: 'changeUsername' | 'changeName' | 'changeBio'; value: string }
+  | { action: 'changeUsername' | 'changeName' | 'changeBio' | 'changePronouns'; value: string }
+
+export async function loadPronounRecommendations(signal: AbortSignal) {
+  return z.object({
+    languages: z.record(z.string(), z.array(z.string())),
+    general: z.array(z.string()),
+    maxLength: z.number().int().positive(),
+  }).parse(await adminRequest('/api/profiles/pronouns/recommendations', signal))
+}
 
 export type BulkProfileAction = 'changeName' | 'changeBio'
 export type AccountAction = 'ban' | 'unban' | 'remove'
@@ -101,6 +110,7 @@ export const targetSchema = z.discriminatedUnion('kind', [
   user.extend({
     kind: z.literal('user'),
     bio: z.string(),
+    pronouns,
     role: roles,
     badges,
     canEditProfile: z.boolean(),

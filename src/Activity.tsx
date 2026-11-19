@@ -25,6 +25,7 @@ const actionLabels: Record<string, string> = {
   changeUsername: 'Changed username',
   changeName: 'Changed display name',
   changeBio: 'Changed bio',
+  changePronouns: 'Changed pronouns',
   changeRole: 'Changed role',
   addBadge: 'Added badge',
   removeBadge: 'Removed badge',

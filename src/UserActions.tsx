@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { Alert, Button, Callout, Dialog, DialogBody, DialogFooter, FormGroup, HTMLSelect, InputGroup, Menu, MenuDivider, MenuItem, TextArea } from '@blueprintjs/core'
 import { AdminAccessError, moderateAccount, updateUserProfile, updateUserProfiles } from './adminApi'
 import type { AccountAction, BulkProfileAction, ManagedUser, ProfileChange } from './adminApi'
+import { PronounsField } from './PronounsField'
 
 type Action = ProfileChange['action']
 
@@ -19,6 +20,7 @@ export function UserActions({ user, onAction, onAccountAction, onBadges }: {
     <MenuItem text="Change Username" icon="edit" onClick={() => onAction('changeUsername')} />
     <MenuItem text="Change Name" icon="edit" onClick={() => onAction('changeName')} />
     <MenuItem text="Change Bio" icon="edit" onClick={() => onAction('changeBio')} />
+    <MenuItem text="Change Pronouns" icon="edit" onClick={() => onAction('changePronouns')} />
     {onBadges && <MenuItem text="Manage Badges" icon="badge" onClick={onBadges} />}
     {user.canModerateAccount && <>
       <MenuDivider />
@@ -100,6 +102,7 @@ const titles = {
   changeUsername: 'Change Username',
   changeName: 'Change Name',
   changeBio: 'Change Bio',
+  changePronouns: 'Change Pronouns',
 } satisfies Record<Action, string>
 
 const confirmText = {
@@ -109,16 +112,18 @@ const confirmText = {
 }
 
 export function UserActionDialog({ user, action, onClose, onSaved, onAccessLost }: {
-  user: Pick<ManagedUser, 'id' | 'handle' | 'name' | 'bio'>
+  user: Pick<ManagedUser, 'id' | 'handle' | 'name' | 'bio' | 'pronouns'>
   action: Action
   onClose: () => void
   onSaved: (user: ManagedUser) => void
   onAccessLost: () => void
 }) {
-  const initialValue = action === 'changeUsername' ? user.handle.slice(1) : action === 'changeBio' ? user.bio : user.name
+  const initialValue = action === 'changeUsername' ? user.handle.slice(1)
+    : action === 'changeBio' ? user.bio
+    : action === 'changePronouns' ? user.pronouns : user.name
   return <ProfileActionDialog action={action} initialValue={initialValue} target={user.handle}
     onClose={onClose} onAccessLost={onAccessLost} onSave={async value => {
-      const change = action === 'changeName' || action === 'changeBio' || action === 'changeUsername'
+      const change = action === 'changeName' || action === 'changeBio' || action === 'changeUsername' || action === 'changePronouns'
         ? { action, value } : { action }
       onSaved(await updateUserProfile(user.id, change))
     }} />
@@ -150,8 +155,11 @@ function ProfileActionDialog({ action, initialValue, target, bulk = false, onClo
   const [error, setError] = useState('')
   const username = action === 'changeUsername'
   const bio = action === 'changeBio'
-  const editing = username || bio || action === 'changeName'
-  const valid = username ? /^[a-z0-9_]{3,32}$/.test(value) : value.trim().length > 0 && (!bio || value.length <= 160)
+  const pronouns = action === 'changePronouns'
+  const editing = username || bio || pronouns || action === 'changeName'
+  const valid = username ? /^[a-z0-9_]{3,32}$/.test(value)
+    : pronouns ? value.length <= 80
+    : value.trim().length > 0 && (!bio || value.length <= 160)
   const unchanged = value.trim() === initialValue
 
   async function submit() {
@@ -173,10 +181,11 @@ function ProfileActionDialog({ action, initialValue, target, bulk = false, onClo
     <form onSubmit={event => { event.preventDefault(); void submit() }}>
       <DialogBody>
         {bulk && <p>Set the same {bio ? 'bio' : 'display name'} for {target}.</p>}
-        {editing ? <FormGroup
+        {pronouns ? <PronounsField value={value} disabled={saving} onChange={setValue} /> : editing ? <FormGroup
           label={username ? 'Username' : bio ? 'Bio' : 'Display name'}
           labelFor="admin-profile-value"
-          helperText={username ? 'Use 3 to 32 lowercase letters, numbers, or underscores.' : bio ? `${value.length} / 160` : undefined}
+          helperText={username ? 'Use 3 to 32 lowercase letters, numbers, or underscores.'
+            : bio ? `${value.length} / 160` : undefined}
         >
           {bio
             ? <TextArea id="admin-profile-value" fill rows={4} value={value} disabled={saving} maxLength={160}
