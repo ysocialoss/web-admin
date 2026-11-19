@@ -1,32 +1,26 @@
-# React + TypeScript + Vite
+# Ysocial Admin
 
-This template provides a minimal setup to get React working in Vite with HMR and some Oxlint rules.
+1. Run `pnpm db:migrate` in `api` to apply the moderation migrations.
+2. Set `ADMIN_ORIGIN=http://localhost:3000` in `api/.env` for local development. Use the dashboard's HTTPS origin in production.
+3. Register `<ADMIN_ORIGIN>/auth/callback` with CNS. If both apps use the same origin, they share one redirect URI.
+4. Start the API on port 3100. In `web-admin`, run `pnpm install` and `pnpm dev`, then open [Ysocial Admin](http://localhost:3000).
+5. Sign in with CNS. New and existing accounts start with the `user` role. To grant dashboard access, assign `admin` or `moderator` to an existing Ysocial account using a trusted database connection. Replace `your_handle` with its Ysocial handle.
 
-Currently, two official plugins are available:
+   ```sql
+   UPDATE users
+   SET role = 'admin', approved_at = COALESCE(approved_at, now())
+   WHERE handle = 'your_handle';
+   ```
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+Both staff roles can read the dashboard, including overview metrics, recent signups and posts, service health, and user and post details.
 
-## React Compiler
+Open **Waitlist** to review new signups after they choose a handle. Admins can approve accounts. Pending accounts can browse but cannot make changes until approved.
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+- Open **Content review** to search by author or text and filter by posts or replies. Open a result to inspect its content, attachments, author, and related posts. Admins can permanently remove a post or reply after confirming. Removal also deletes the replies under that item.
+- Open **Users** to search by name or handle. Admins can edit roles individually or select multiple users on the current page and choose **Apply role**. Use **Profile actions** to edit names or clear profile content. The dashboard protects your own role and the reserved admin role from edits.
+- Use **Ban User** to make an account read-only and hide its posts. The signed-in user sees the reason, time, and moderator. The reason also appears on the public profile. **Unban User** restores posts and account access. **Remove User** permanently deletes the profile, its posts, and replies below those posts. The same CNS account can sign up again and must be approved.
+- Open **Activity history** to see recorded content removals, profile edits, and role changes. Each entry names the staff member and the affected account or post.
 
-## Expanding the Oxlint configuration
+In production, serve the build over HTTPS and reverse proxy `/api`, `/auth`, and `/health` on the dashboard origin to the API. In development, Vite proxies these paths to port 3100 unless you set `API_URL`.
 
-If you are developing a production application, we recommend enabling type-aware lint rules by installing `oxlint-tsgolint` and editing `.oxlintrc.json`:
-
-```json
-{
-  "$schema": "./node_modules/oxlint/configuration_schema.json",
-  "plugins": ["react", "typescript", "oxc"],
-  "options": {
-    "typeAware": true
-  },
-  "rules": {
-    "react/rules-of-hooks": "error",
-    "react/only-export-components": ["warn", { "allowConstantExport": true }]
-  }
-}
-```
-
-See the [Oxlint rules documentation](https://oxc.rs/docs/guide/usage/linter/rules) for the full list of rules and categories.
+Run `pnpm build` and `pnpm lint` in `web-admin`. Run `pnpm test` and `pnpm typecheck` in `api`.

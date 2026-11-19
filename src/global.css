@@ -1,0 +1,254 @@
+html {
+  scrollbar-gutter: stable;
+}
+
+.admin-navbar {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  height: 60px;
+  z-index: 2;
+}
+
+.admin-navbar > .bp6-navbar-group {
+  flex-shrink: 0;
+}
+
+.admin-navbar > .bp6-navbar-group:nth-child(2) {
+  order: 2;
+}
+
+.admin-search {
+  width: min(100%, 420px);
+  min-width: 0;
+  margin-left: auto;
+}
+
+.admin-workspace {
+  display: grid;
+  grid-template-columns: 224px minmax(0, 1fr);
+  min-height: calc(100dvh - 60px);
+  background: #f4f6f9;
+}
+
+.admin-sidebar {
+  background: #fff;
+  border-right: 1px solid #e1e7ef;
+  padding: 24px 12px;
+}
+
+.admin-sidebar .bp6-menu {
+  display: grid;
+  gap: 4px;
+  background: transparent;
+  padding: 0;
+}
+
+.admin-sidebar .bp6-menu-item {
+  position: relative;
+  align-items: center;
+  min-height: 36px;
+  padding-inline: 12px;
+  border-radius: 6px;
+}
+
+.admin-sidebar .bp6-menu-item[aria-current="page"] {
+  background: #eef4fc;
+  color: #184f9b;
+  font-weight: 600;
+}
+
+.admin-sidebar .bp6-menu-item[aria-current="page"]::before {
+  content: "";
+  position: absolute;
+  inset-block: 8px;
+  inset-inline-start: 0;
+  width: 2px;
+  border-radius: 2px;
+  background: currentColor;
+}
+
+.admin-sidebar .bp6-menu-item[aria-current="page"] > .bp6-icon {
+  color: inherit;
+}
+
+.bp6-dark .admin-workspace {
+  background: #20262e;
+}
+
+.bp6-dark .admin-sidebar {
+  background: #252d38;
+  border-color: #394553;
+}
+
+.bp6-dark .admin-sidebar .bp6-menu-item[aria-current="page"] {
+  background: #2d3949;
+  color: #b6d5ff;
+}
+
+.admin-main {
+  min-width: 0;
+}
+
+@media (max-width: 760px) {
+  .admin-workspace {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: auto 1fr;
+  }
+
+  .admin-sidebar {
+    padding: 8px;
+    border-right: 0;
+    border-bottom: 1px solid #e1e7ef;
+  }
+
+  .admin-sidebar .bp6-menu {
+    grid-template-columns: repeat(auto-fit, minmax(115px, 1fr));
+  }
+
+  .admin-sidebar .bp6-menu-item {
+    padding-inline: 8px;
+  }
+}
+
+@media (max-width: 560px) {
+  .admin-sidebar .bp6-menu {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .admin-navbar {
+    gap: 4px;
+    padding-inline: 8px;
+  }
+
+  .admin-navbar .bp6-navbar-heading {
+    margin-right: 4px;
+  }
+
+  .admin-navbar .bp6-button-text {
+    display: none;
+  }
+}
+
+.admin-loading-status {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 28px;
+}
+
+.admin-loading-rows {
+  display: grid;
+  gap: 12px;
+  padding-block: 12px;
+}
+
+.admin-loading-rows > div {
+  height: 20px;
+  border-radius: 4px;
+}
+
+.admin-loading-rows > div:nth-child(even) {
+  width: 82%;
+}
+
+.admin-session {
+  display: grid;
+  place-items: center;
+  min-height: 100vh;
+  min-height: 100dvh;
+  padding: 24px;
+}
+
+.admin-session > .bp6-card {
+  width: min(100%, 420px);
+}
+
+.admin-search-status {
+  padding: 4px 8px;
+}
+
+.admin-users-results {
+  margin-top: 16px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .admin-loading-rows .bp6-skeleton {
+    animation: none;
+  }
+}
+
+.admin-user-identity {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.admin-user-avatar {
+  flex-shrink: 0;
+  object-fit: cover;
+  border-radius: 50%;
+  background-color: var(--bp-surface-background-color-default-rest);
+}
+
+.admin-user-link span {
+  display: block;
+}
+
+.admin-user-bio {
+  width: 38%;
+  min-width: 180px;
+}
+
+.admin-user-bio > div {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+}
+
+.admin-user-details {
+  display: grid;
+  gap: 20px;
+}
+
+.admin-user-details header h4 {
+  margin: 0;
+}
+
+.admin-profile-banner {
+  position: relative;
+  overflow: hidden;
+  aspect-ratio: 3 / 1;
+  width: min(100%, 720px);
+  border-radius: 4px;
+}
+
+.admin-profile-banner img {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.admin-user-facts {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 180px), 1fr));
+  gap: 16px;
+  margin: 0;
+}
+
+.admin-user-facts dd {
+  margin: 4px 0 0;
+  overflow-wrap: anywhere;
+}
+
+.admin-user-colour {
+  display: inline-block;
+  width: 12px;
+  height: 12px;
+  margin-right: 6px;
+  border-radius: 50%;
+}
