@@ -7,7 +7,7 @@ const adminRequiredMessage = 'Only admins can manage badges.'
 const maxIconSuggestions = 12
 
 export function UserBadgesDialog({ user, onClose, onSaved, onAccessLost }: {
-  user: Pick<ManagedUser, 'id' | 'handle' | 'badges'>
+  user: Pick<ManagedUser, 'id' | 'handle' | 'badges' | 'github'>
   onClose: () => void
   onSaved: (badges: UserBadge[]) => void
   onAccessLost: () => void
@@ -66,6 +66,9 @@ export function UserBadgesDialog({ user, onClose, onSaved, onAccessLost }: {
       if (validIcon && tooltip && !duplicate) void save({ action: 'add', icon, tooltip })
     }}>
       <DialogBody>
+        {!!user.github?.contributionCount && <Callout icon="git-pull" title="Contributor badge">
+          {user.github.contributionCount.toLocaleString()} public ysocialoss {user.github.contributionCount === 1 ? 'contribution' : 'contributions'} · Awarded automatically
+        </Callout>}
         {user.badges.length > 0 ? <ul className="admin-badge-list" aria-label="Assigned badges">
           {user.badges.map(badge => <li key={badge.id}>
             <BadgeIcon icon={badge.icon} />

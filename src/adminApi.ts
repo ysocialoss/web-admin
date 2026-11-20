@@ -17,7 +17,11 @@ const accountStatus = {
   canModerateAccount: z.boolean().default(false),
 }
 const pronouns = z.string().default('')
-const managedUser = user.extend({ bio: z.string(), pronouns, role: roles, badges, canEditRole: z.boolean(), ...accountStatus })
+const github = z.object({
+  login: z.string().regex(/^[a-z\d][a-z\d_-]{0,99}$/i),
+  contributionCount: z.number().int().nonnegative().nullable(),
+}).nullable().default(null)
+const managedUser = user.extend({ bio: z.string(), pronouns, role: roles, badges, github, canEditRole: z.boolean(), ...accountStatus })
 export type ManagedUser = z.infer<typeof managedUser>
 export const userList = z.object({
   users: z.array(managedUser),
@@ -113,6 +117,7 @@ export const targetSchema = z.discriminatedUnion('kind', [
     pronouns,
     role: roles,
     badges,
+    github,
     canEditProfile: z.boolean(),
     canEditBadges: z.boolean().default(false),
     ...accountStatus,

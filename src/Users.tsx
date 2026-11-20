@@ -156,6 +156,10 @@ export default function Users({ onAccessLost, onOpenUser }: { onAccessLost: () =
                         <strong>{user.name || user.handle}</strong>
                         {user.name && <span>{user.handle}</span>}
                       </Button>
+                      {user.github && <div>
+                        <a href={`https://github.com/${user.github.login}`} target="_blank" rel="noreferrer">GitHub · @{user.github.login}</a>
+                        {!!user.github.contributionCount && <> <Tag minimal intent="success">Contributor · {user.github.contributionCount.toLocaleString()}</Tag></>}
+                      </div>}
                       {user.bannedAt && <Tag minimal intent="danger">Banned</Tag>}
                     </td>
                     <td className="admin-user-bio"><div><bdi>{user.pronouns || '—'}</bdi></div></td>
