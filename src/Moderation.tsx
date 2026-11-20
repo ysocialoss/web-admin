@@ -159,6 +159,12 @@ function UserDetails({ user }: { user: Extract<ModerationDetail, { kind: 'user' 
     </section>
     <dl className="admin-user-facts">
       <div><dt>Pronouns</dt><dd><bdi>{user.pronouns || '—'}</bdi></dd></div>
+      {user.github && <>
+        <div><dt>GitHub</dt><dd>
+          <a href={`https://github.com/${user.github.login}`} target="_blank" rel="noreferrer">@{user.github.login}</a>
+        </dd></div>
+        <div><dt>ysocialoss contributions</dt><dd>{user.github.contributionCount?.toLocaleString() ?? 'Pending'}</dd></div>
+      </>}
       <div><dt>Followers</dt><dd>{user.followerCount.toLocaleString()}</dd></div>
       <div><dt>Following</dt><dd>{user.followingCount.toLocaleString()}</dd></div>
       <div><dt>Joined</dt><dd><time dateTime={user.joined}>{new Date(user.joined).toLocaleDateString()}</time></dd></div>
