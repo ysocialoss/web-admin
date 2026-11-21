@@ -32,6 +32,8 @@ const actionLabels: Record<string, string> = {
   removePost: 'Removed content',
   removeGif: 'Removed GIF',
   removeVoice: 'Removed voice message',
+  removeImages: 'Removed images',
+  removeImageFlag: 'Removed image flag',
   clearAttachments: 'Cleared attachments',
   approveUser: 'Approved account',
   banUser: 'Banned account',
@@ -84,13 +86,13 @@ export default function Activity({ onAccessLost, onOpenUser, onOpenPost }: {
             <thead><tr><th scope="col">Action</th><th scope="col">Staff member</th><th scope="col">Target</th><th scope="col">Time</th></tr></thead>
             <tbody>{result.entries.map(entry => <tr key={entry.id}>
               <td>
-                <Tag minimal intent={['removePost', 'banUser', 'removeUser'].includes(entry.action) ? 'danger' : 'primary'}>{actionLabels[entry.action] ?? entry.action}</Tag>
+                <Tag minimal intent={['removePost', 'removeImageFlag', 'banUser', 'removeUser'].includes(entry.action) ? 'danger' : 'primary'}>{actionLabels[entry.action] ?? entry.action}</Tag>
                 {entry.detail && <div className={Classes.TEXT_MUTED}>{entry.detail}</div>}
               </td>
               <td><Button variant="minimal" onClick={() => onOpenUser(entry.actorId)}>@{entry.actorHandle}</Button></td>
               <td className="admin-activity-target">{entry.action === 'removePost'
                 ? <><div>{entry.targetHandle ? 'By @' + entry.targetHandle : 'Content'}</div><code>{entry.targetId}</code></>
-                : entry.action === 'removeGif' || entry.action === 'removeVoice' || entry.action === 'clearAttachments'
+                : ['removeGif', 'removeVoice', 'removeImages', 'clearAttachments'].includes(entry.action)
                   ? <Button variant="minimal" onClick={() => onOpenPost(entry.targetId)}>
                       {entry.targetHandle ? 'Post by @' + entry.targetHandle : 'View post'}
                     </Button>

@@ -22,10 +22,23 @@ export function PostVoice({ url, compact = false }: { url: string; compact?: boo
         onError={() => setFailedUrl(url)} />
 }
 
-export default function PostPreview({ content, gif, voiceUrl }: { content: string; gif: AdminPostGif; voiceUrl: string | null }) {
-  if (!gif) return <span className="admin-content-excerpt">{content || (voiceUrl ? 'Voice message' : 'Open media post')}</span>
+export function PostImage({ url, alt, compact = false }: { url: string; alt: string; compact?: boolean }) {
+  const [failed, setFailed] = useState(false)
+  if (failed) return compact
+    ? <span className="admin-gif-thumbnail admin-gif-placeholder" aria-label="Image unavailable"><Icon icon="media" /></span>
+    : <Callout intent="warning" icon="media">Image unavailable.</Callout>
+  return <img src={url} alt={alt}
+    decoding="async" loading="lazy" className={compact ? 'admin-gif-thumbnail' : 'admin-post-media'}
+    onError={() => setFailed(true)} />
+}
+
+export default function PostPreview({ content, gif, voiceUrl, imageIds }: {
+  content: string; gif: AdminPostGif; voiceUrl: string | null; imageIds: string[]
+}) {
+  const imageId = imageIds[0]
+  if (!gif && !imageId) return <span className="admin-content-excerpt">{content || (voiceUrl ? 'Voice message' : 'Open media post')}</span>
   return <span className="admin-post-preview">
-    <PostGif gif={gif} compact />
-    <span className="admin-content-excerpt">{content || gif.title || 'GIF post'}</span>
+    {imageId ? <PostImage key={imageId} url={`/api/admin/post-images/${imageId}`} alt="" compact /> : gif && <PostGif gif={gif} compact />}
+    <span className="admin-content-excerpt">{content || (imageId ? 'Image attachment' : gif?.title || 'GIF post')}</span>
   </span>
 }

@@ -23,12 +23,14 @@ import Users from './Users'
 import Moderation from './Moderation'
 import ContentReview from './ContentReview'
 import Activity from './Activity'
+import Flags from './Flags'
 import Waitlist from './Waitlist'
 import type { ModerationTarget } from './Moderation'
 
 const sections = [
   { id: 'overview', title: 'Overview', icon: 'dashboard', path: '/' },
   { id: 'moderation', title: 'Content review', icon: 'shield', path: '/moderation' },
+  { id: 'flags', title: 'Flags', icon: 'flag', path: '/flags' },
   { id: 'users', title: 'Users', icon: 'people', path: '/users' },
   { id: 'waitlist', title: 'Waitlist', icon: 'time', path: '/waitlist' },
   { id: 'activity', title: 'Activity history', icon: 'history', path: '/activity' },
@@ -133,8 +135,8 @@ function ConnectedApp({ onSignOut, onAccessLost, signingOut }: { onSignOut: () =
               {matchingUsers.map((user) => <MenuItem key={user.handle} icon={<UserAvatar src={user.avatarUrl} />} text={user.name || user.handle} label={user.handle}
                 onClick={() => openResult({ kind: 'user', id: user.id })} />)}
               {matchingPosts.length > 0 && <MenuDivider title="Posts" />}
-              {matchingPosts.map((post) => <MenuItem key={post.id} icon={post.gif ? 'media' : post.voiceUrl ? 'volume-up' : 'document'}
-                text={post.content || post.gif?.title || (post.voiceUrl ? 'Voice message' : post.kind)} label={post.author}
+              {matchingPosts.map((post) => <MenuItem key={post.id} icon={post.gif || post.imageIds.length ? 'media' : post.voiceUrl ? 'volume-up' : 'document'}
+                text={post.content || post.gif?.title || (post.imageIds.length ? 'Image attachment' : post.voiceUrl ? 'Voice message' : post.kind)} label={post.author}
                 onClick={() => openResult({ kind: 'post', id: post.id })} />)}
               {result.loading && <li className="admin-search-status"><LoadingStatus label="Searching…" /></li>}
               {result.error && <>
@@ -187,6 +189,7 @@ function ConnectedApp({ onSignOut, onAccessLost, signingOut }: { onSignOut: () =
             : <Overview data={overview.data} onOpenModeration={openResult} onNavigate={navigate} onRefresh={overview.refresh} />)}
         {activeSection.id === 'users' && <Users onAccessLost={onAccessLost} onOpenUser={id => navigate('/moderation/user/' + id)} />}
         {activeSection.id === 'waitlist' && <Waitlist onAccessLost={onAccessLost} onOpenUser={id => navigate('/moderation/user/' + id)} />}
+        {activeSection.id === 'flags' && <Flags onAccessLost={onAccessLost} onOpenUser={id => navigate('/moderation/user/' + id)} />}
         {activeSection.id === 'activity' && <Activity onAccessLost={onAccessLost}
           onOpenUser={id => navigate('/moderation/user/' + id)} onOpenPost={id => navigate('/moderation/post/' + id)} />}
         {activeSection.id === 'moderation' && (isDetail

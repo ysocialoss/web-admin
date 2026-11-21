@@ -100,11 +100,24 @@ const post = z.object({
   id: z.uuid(), authorId: z.uuid(), author: z.string(), content: z.string(),
   kind: z.enum(['Post', 'Reply']), time: z.string(),
   gif: z.object({ url: z.url({ protocol: /^https?$/ }), title: z.string() }).nullable().default(null),
+  imageIds: z.array(z.uuid()).default([]),
   voiceUrl: z.string().startsWith('/api/voices/').nullable().default(null),
   hasPoll: z.boolean().default(false),
 })
 export type AdminPostGif = z.infer<typeof post>['gif']
 export const postList = z.object({ posts: z.array(post), hasNextPage: z.boolean(), canModerate: z.boolean().default(false) })
+export const imageFlagPage = z.object({
+  flags: z.array(z.object({
+    id: z.uuid(),
+    uploaderId: z.uuid(),
+    handle: z.string(),
+    filename: z.string().nullable(),
+    confidence: z.number().min(0).max(100).nullable(),
+    createdAt: z.iso.datetime(),
+  })),
+  hasNextPage: z.boolean(),
+  canRemove: z.boolean().default(false),
+})
 const overviewSchema = z.object({
   metrics: z.array(z.object({ label: z.string(), value: z.string(), detail: z.string() })),
   recentUsers: z.array(user), recentPosts: z.array(post),

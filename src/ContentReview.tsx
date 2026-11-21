@@ -11,12 +11,13 @@ const periodFilter = z.enum(['all', '1d', '7d', '30d']).catch('all')
 const sortFilter = z.enum(['newest', 'oldest', 'author_asc', 'author_desc']).catch('newest')
 const defaultFilters = { q: '', author: '', period: periodFilter.parse(undefined), sort: sortFilter.parse(undefined) }
 type PostRow = z.infer<typeof postList>['posts'][number]
-type Removal = { post: PostRow; kind: 'post' | 'gif' | 'voice' | 'all' }
+type Removal = { post: PostRow; kind: 'post' | 'gif' | 'voice' | 'images' | 'all' }
+const attachmentLabels = { gif: 'GIF', voice: 'voice message', images: 'images' }
 
 function removalLabel({ post, kind }: Removal) {
   if (kind === 'post') return 'Delete ' + post.kind
   if (kind === 'all') return 'Clear All Attachments'
-  return kind === 'gif' ? 'Remove GIF' : 'Remove Voice Message'
+  return 'Remove ' + attachmentLabels[kind]
 }
 
 export default function ContentReview({ type, onType, onOpenPost, onOpenUser, onAccessLost, notice }: {
@@ -112,7 +113,8 @@ export default function ContentReview({ type, onType, onOpenPost, onOpenUser, on
 
     if (post.gif) actions.push(removalAction('gif'))
     if (post.voiceUrl) actions.push(removalAction('voice'))
-    if (post.gif || post.voiceUrl || post.hasPoll) actions.push(removalAction('all'))
+    if (post.imageIds.length) actions.push(removalAction('images'))
+    if (post.gif || post.voiceUrl || post.imageIds.length || post.hasPoll) actions.push(removalAction('all'))
     actions.push(removalAction('post'))
     return actions
   }
@@ -124,7 +126,8 @@ export default function ContentReview({ type, onType, onOpenPost, onOpenUser, on
       await adminRequest('/api/admin/posts/' + post.id + (kind === 'post' ? '' : '/attachments/' + kind), undefined, { method: 'DELETE' })
       setRemoval(null)
       setFeedback({ intent: 'success', text: kind === 'post' ? post.kind + ' deleted.'
-        : kind === 'all' ? 'Attachments cleared.' : kind === 'gif' ? 'GIF removed.' : 'Voice message removed.' })
+        : kind === 'all' ? 'Attachments cleared.' : kind === 'images' ? 'Images removed.'
+          : kind === 'gif' ? 'GIF removed.' : 'Voice message removed.' })
       load(kind === 'post' && result?.posts.length === 1 && page > 1 ? page - 1 : page)
     } catch (cause) {
       if (cause instanceof AdminAccessError) onAccessLost()
@@ -189,9 +192,9 @@ export default function ContentReview({ type, onType, onOpenPost, onOpenUser, on
           <HTMLTable striped className="overview-table admin-content-table">
             <thead><tr><th scope="col">Content</th><th scope="col">Author</th><th scope="col">Type</th><th scope="col">Published</th></tr></thead>
             <tbody>{result.posts.map(post => <tr key={post.id}>
-              <td><ContentMenu label={post.content || post.gif?.title || (post.voiceUrl ? 'Voice message' : 'Open media post')}
+              <td><ContentMenu label={post.content || post.gif?.title || (post.imageIds.length ? 'Image attachment' : post.voiceUrl ? 'Voice message' : 'Open media post')}
                 onActivate={() => onOpenPost(post.id)} actions={postActions(post, result.canModerate)}>
-                <PostPreview content={post.content} gif={post.gif} voiceUrl={post.voiceUrl} />
+                <PostPreview content={post.content} gif={post.gif} voiceUrl={post.voiceUrl} imageIds={post.imageIds} />
               </ContentMenu>
               {post.voiceUrl && <PostVoice url={post.voiceUrl} compact />}</td>
               <td><ContentMenu label={post.author} actions={[
@@ -228,7 +231,7 @@ export default function ContentReview({ type, onType, onOpenPost, onOpenUser, on
         ? `Permanently delete this ${removal.post.kind.toLowerCase()} by ${removal.post.author} and all its replies?`
         : removal.kind === 'all'
           ? `Clear all attachments from this ${removal.post.kind.toLowerCase()} by ${removal.post.author}? Clearing a poll also removes its votes.`
-        : `Remove the ${removal.kind === 'gif' ? 'GIF' : 'voice message'} from this ${removal.post.kind.toLowerCase()} by ${removal.post.author}?`}</p>
+        : `Remove the ${attachmentLabels[removal.kind]} from this ${removal.post.kind.toLowerCase()} by ${removal.post.author}?`}</p>
       {removalError && <Callout intent="danger" role="alert">{removalError}</Callout>}
     </Alert>}
   </section>

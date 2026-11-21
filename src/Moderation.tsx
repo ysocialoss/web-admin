@@ -7,7 +7,7 @@ import { Alert, Button, Callout, Card, Classes, H1, H4, NonIdealState, PopoverNe
 import { AccountActionDialog, UserActionDialog, UserActions } from './UserActions'
 import { UserBadgesDialog } from './UserBadgesDialog'
 import UserPosts from './UserPosts'
-import { PostGif, PostVoice } from './PostPreview'
+import { PostGif, PostImage, PostVoice } from './PostPreview'
 
 export type ModerationTarget = { kind: 'user' | 'post'; id: string }
 
@@ -26,7 +26,7 @@ export default function Moderation({ onAccessLost, pathname, onNavigate, onOpenP
   const [profileAction, setProfileAction] = useState<ProfileChange['action'] | null>(null)
   const [accountAction, setAccountAction] = useState<AccountAction | null>(null)
   const [badgeUserId, setBadgeUserId] = useState<string | null>(null)
-  const [confirmRemoval, setConfirmRemoval] = useState(false)
+  const [confirmRemoval, setConfirmRemoval] = useState<'post' | 'images' | null>(null)
   const [removing, setRemoving] = useState(false)
   const [actionError, setActionError] = useState('')
   const [notice, setNotice] = useState('')
@@ -54,15 +54,21 @@ export default function Moderation({ onAccessLost, pathname, onNavigate, onOpenP
   const target = current && 'target' in current ? current.target : null
   const isUser = /^\/moderation\/user\//i.test(pathname)
 
-  async function remove(id: string) {
+  async function remove(id: string, kind: 'post' | 'images') {
     setRemoving(true)
     setActionError('')
     try {
-      await adminRequest('/api/admin/posts/' + id, undefined, { method: 'DELETE' })
-      onRemoved()
+      await adminRequest('/api/admin/posts/' + id + (kind === 'images' ? '/attachments/images' : ''), undefined, { method: 'DELETE' })
+      if (kind === 'post') onRemoved()
+      else {
+        setConfirmRemoval(null)
+        setRevision(value => value + 1)
+        setNotice('Images removed.')
+      }
     } catch (cause) {
       if (cause instanceof AdminAccessError) onAccessLost()
       else setActionError(cause instanceof Error ? cause.message : 'Could not remove content.')
+    } finally {
       setRemoving(false)
     }
   }
@@ -79,7 +85,7 @@ export default function Moderation({ onAccessLost, pathname, onNavigate, onOpenP
           <Button icon="edit" endIcon="chevron-down">Profile actions</Button>
         </PopoverNext>}
         {target?.kind === 'post' && target.canRemove &&
-          <Button intent="danger" icon="trash" onClick={() => setConfirmRemoval(true)}>Remove {target.type.toLowerCase()}</Button>}
+          <Button intent="danger" icon="trash" onClick={() => setConfirmRemoval('post')}>Remove {target.type.toLowerCase()}</Button>}
       </header>
       {(notice || navigationNotice) && <Callout className="admin-notice" intent="success" role="status">{notice || navigationNotice}</Callout>}
       <Card>
@@ -97,6 +103,9 @@ export default function Moderation({ onAccessLost, pathname, onNavigate, onOpenP
           </div>
           {target.content && <Text className="overview-details">{target.content}</Text>}
           {target.gif && <PostGif gif={target.gif} />}
+          {target.imageIds.map((id, index) => <PostImage key={id} url={`/api/admin/post-images/${id}`} alt={`Attached image ${index + 1}`} />)}
+          {target.canRemove && target.imageIds.length > 0 &&
+            <Button variant="minimal" intent="danger" icon="eraser" onClick={() => setConfirmRemoval('images')}>Remove images</Button>}
           {target.voiceUrl && <PostVoice url={target.voiceUrl} />}
           {target.pollTitle && <Callout icon="chart" title="Poll">{target.pollTitle}</Callout>}
           {target.quotedPostId && <Button variant="minimal" icon="citation"
@@ -129,11 +138,12 @@ export default function Moderation({ onAccessLost, pathname, onNavigate, onOpenP
             setNotice(target.handle + (accountAction === 'ban' ? ' banned.' : ' unbanned.'))
           }
         }} />}
-      {target?.kind === 'post' && <Alert isOpen={confirmRemoval} intent="danger" icon="trash"
-        loading={removing} cancelButtonText="Cancel" confirmButtonText={`Remove ${target.type.toLowerCase()}`}
-        onCancel={() => { setConfirmRemoval(false); setActionError('') }}
-        onConfirm={() => void remove(target.id)}>
-        <p>Permanently remove this {target.type.toLowerCase()} by {target.author} and all its replies?</p>
+      {target?.kind === 'post' && confirmRemoval && <Alert isOpen intent="danger" icon="trash"
+        loading={removing} cancelButtonText="Cancel" confirmButtonText={confirmRemoval === 'images' ? 'Remove images' : `Remove ${target.type.toLowerCase()}`}
+        onCancel={() => { setConfirmRemoval(null); setActionError('') }}
+        onConfirm={() => void remove(target.id, confirmRemoval)}>
+        <p>{confirmRemoval === 'images' ? `Remove the images from this ${target.type.toLowerCase()} by ${target.author}?`
+          : `Permanently remove this ${target.type.toLowerCase()} by ${target.author} and all its replies?`}</p>
         {actionError && <Callout intent="danger" role="alert">{actionError}</Callout>}
       </Alert>}
     </section>

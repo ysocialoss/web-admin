@@ -52,7 +52,7 @@ export default function UserPosts({ userId, onOpenPost, onAccessLost }: {
             <thead><tr><th scope="col">Content</th><th scope="col">Type</th><th scope="col">Published</th></tr></thead>
             <tbody>{result.posts.map(post => <tr key={post.id}>
               <td><Button variant="minimal" alignText="left" onClick={() => onOpenPost(post.id)}>
-                <PostPreview content={post.content} gif={post.gif} voiceUrl={post.voiceUrl} />
+                <PostPreview content={post.content} gif={post.gif} voiceUrl={post.voiceUrl} imageIds={post.imageIds} />
               </Button>
               {post.voiceUrl && <PostVoice url={post.voiceUrl} compact />}</td>
               <td><Tag minimal intent={post.kind === 'Reply' ? 'primary' : 'none'}>{post.kind}</Tag></td>
