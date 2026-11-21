@@ -50,7 +50,7 @@ export default function Overview({ data, onOpenModeration, onNavigate, onRefresh
               {data.recentPosts.slice(0, 8).map(post => <tr key={post.id}>
                 <td><Button variant="minimal" alignText="left" className="admin-user-link" onClick={() =>
                   onOpenModeration({ kind: 'post', id: post.id })}>
-                  <PostPreview content={post.content} gif={post.gif} voiceUrl={post.voiceUrl} />
+                  <PostPreview content={post.content} gif={post.gif} voiceUrl={post.voiceUrl} imageIds={post.imageIds} />
                   <span className={Classes.TEXT_MUTED}>{post.author}</span>
                 </Button>
                 {post.voiceUrl && <PostVoice url={post.voiceUrl} compact />}</td>

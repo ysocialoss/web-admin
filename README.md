@@ -17,6 +17,7 @@ Both staff roles can read the dashboard, including overview metrics, recent sign
 Open **Waitlist** to review new signups after they choose a handle. Admins can approve accounts. Pending accounts can browse but cannot make changes until approved.
 
 - Open **Content review** to search by author or text and filter by posts or replies. Open a result to inspect its content, attachments, author, and related posts. Admins can permanently remove a post or reply after confirming. Removal also deletes the replies under that item.
+- Open **Flags** to review image uploads rejected by NSFW screening in the last seven days. Staff can reveal the rejected image or open the uploader's profile. Admins can permanently remove a flag and its image.
 - Open **Users** to search by name or handle. Admins can edit roles individually or select multiple users on the current page and choose **Apply role**. Use **Profile actions** to edit names or clear profile content. The dashboard protects your own role and the reserved admin role from edits.
 - Use **Ban User** to make an account read-only and hide its posts. The signed-in user sees the reason, time, and moderator. The reason also appears on the public profile. **Unban User** restores posts and account access. **Remove User** permanently deletes the profile, its posts, and replies below those posts. The same CNS account can sign up again and must be approved.
 - Open **Activity history** to see recorded content removals, profile edits, and role changes. Each entry names the staff member and the affected account or post.
