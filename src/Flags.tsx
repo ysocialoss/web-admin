@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { useHistoryPage } from './useHistoryPage'
 import { Alert, Button, ButtonGroup, Callout, Card, Classes, H1, HTMLTable, NonIdealState, Tag } from '@blueprintjs/core'
 import { AdminAccessError, adminRequest, imageFlagPage } from './adminApi'
 import { LoadingRows, LoadingStatus } from './LoadingState'
@@ -10,7 +11,7 @@ export default function Flags({ onAccessLost, onOpenUser }: {
   onAccessLost: () => void
   onOpenUser: (id: string) => void
 }) {
-  const [page, setPage] = useState(1)
+  const [page, setPage] = useHistoryPage()
   const [revision, setRevision] = useState(0)
   const [result, setResult] = useState<FlagPage | null>(null)
   const [error, setError] = useState('')
