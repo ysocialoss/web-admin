@@ -1,5 +1,5 @@
 import { moderationPath } from './moderationRoutes'
-import { useAdminOverview } from './adminApi'
+import { useAdminOverview, useOpenReportCount } from './adminApi'
 import { AdminConnection } from './AdminConnection'
 import { useAdminSession } from './useAdminSession'
 import { useEffect, useState } from 'react'
@@ -24,11 +24,13 @@ import Moderation from './Moderation'
 import ContentReview from './ContentReview'
 import Activity from './Activity'
 import Flags from './Flags'
+import Reports from './Reports'
 import Waitlist from './Waitlist'
 import type { ModerationTarget } from './Moderation'
 
 const sections = [
   { id: 'overview', title: 'Overview', icon: 'dashboard', path: '/' },
+  { id: 'reports', title: 'Reports', icon: 'warning-sign', path: '/reports' },
   { id: 'moderation', title: 'Content review', icon: 'shield', path: '/moderation' },
   { id: 'flags', title: 'Flags', icon: 'flag', path: '/flags' },
   { id: 'users', title: 'Users', icon: 'people', path: '/users' },
@@ -43,6 +45,8 @@ function ConnectedApp({ onSignOut, onAccessLost, signingOut }: { onSignOut: () =
   const [location, setLocation] = useState(() => window.location.pathname + window.location.search)
   const [pathname] = location.split('?')
   const [notice, setNotice] = useState('')
+  const [reportRevision, setReportRevision] = useState(0)
+  const openReports = useOpenReportCount(onAccessLost, reportRevision)
   const activeSection = sections.find((section) => pathname.split('/')[1] === section.id) ?? sections[0]
   const activeNav = /^\/moderation\/user\//i.test(pathname) ? 'users' : activeSection.id
   const overview = useAdminOverview(activeSection.id === 'overview' ? null : '', onAccessLost)
@@ -170,6 +174,7 @@ function ConnectedApp({ onSignOut, onAccessLost, signingOut }: { onSignOut: () =
       <nav className="admin-sidebar" aria-label="Moderation workspace">
         <Menu>
           {sections.map(section => <MenuItem key={section.id} icon={section.icon} text={section.title}
+            label={section.id === 'reports' && openReports ? String(openReports) : undefined}
             active={activeNav === section.id} aria-current={activeNav === section.id ? 'page' : undefined}
             href={section.path} onClick={event => {
               if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return
@@ -189,6 +194,9 @@ function ConnectedApp({ onSignOut, onAccessLost, signingOut }: { onSignOut: () =
             : <Overview data={overview.data} onOpenModeration={openResult} onNavigate={navigate} onRefresh={overview.refresh} />)}
         {activeSection.id === 'users' && <Users onAccessLost={onAccessLost} onOpenUser={id => navigate('/moderation/user/' + id)} />}
         {activeSection.id === 'waitlist' && <Waitlist onAccessLost={onAccessLost} onOpenUser={id => navigate('/moderation/user/' + id)} />}
+        {activeSection.id === 'reports' && <Reports pathname={pathname} onNavigate={navigate} onAccessLost={onAccessLost}
+          onChanged={() => setReportRevision(value => value + 1)}
+          onOpenUser={id => navigate('/moderation/user/' + id, true)} onOpenPost={id => navigate('/moderation/post/' + id, true)} />}
         {activeSection.id === 'flags' && <Flags onAccessLost={onAccessLost} onOpenUser={id => navigate('/moderation/user/' + id)} />}
         {activeSection.id === 'activity' && <Activity onAccessLost={onAccessLost}
           onOpenUser={id => navigate('/moderation/user/' + id)} onOpenPost={id => navigate('/moderation/post/' + id)} />}

@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { useHistoryPage } from './useHistoryPage'
 import { Button, ButtonGroup, Callout, Card, Classes, H2, HTMLTable, NonIdealState, Tag } from '@blueprintjs/core'
 import { AdminAccessError, adminRequest, postList } from './adminApi'
 import { LoadingRows, LoadingStatus } from './LoadingState'
@@ -9,10 +10,7 @@ export default function UserPosts({ userId, onOpenPost, onAccessLost }: {
   onOpenPost: (id: string) => void
   onAccessLost: () => void
 }) {
-  const [page, setPage] = useState(() => {
-    const value = Number(new URLSearchParams(window.location.search).get('page'))
-    return Number.isInteger(value) && value >= 1 && value <= 1_000_000 ? value : 1
-  })
+  const [page, setPage] = useHistoryPage()
   const [revision, setRevision] = useState(0)
   const [result, setResult] = useState<ReturnType<typeof postList.parse> | null>(null)
   const [error, setError] = useState('')
@@ -31,8 +29,6 @@ export default function UserPosts({ userId, onOpenPost, onAccessLost }: {
   }, [userId, page, revision, onAccessLost])
 
   function load(nextPage: number) {
-    const query = nextPage > 1 ? '?page=' + nextPage : ''
-    window.history.replaceState(window.history.state, '', window.location.pathname + query)
     setPage(nextPage)
     setResult(null)
     setError('')

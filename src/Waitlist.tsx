@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { useHistoryPage } from './useHistoryPage'
 import { Alert, Button, ButtonGroup, Callout, Card, Classes, H1, HTMLTable, InputGroup, NonIdealState } from '@blueprintjs/core'
 import { z } from 'zod'
 import { AdminAccessError, adminRequest } from './adminApi'
@@ -20,7 +21,7 @@ export default function Waitlist({ onAccessLost, onOpenUser }: {
 }) {
   const [search, setSearch] = useState('')
   const [query, setQuery] = useState('')
-  const [page, setPage] = useState(1)
+  const [page, setPage] = useHistoryPage()
   const [revision, setRevision] = useState(0)
   const [result, setResult] = useState<z.infer<typeof waitlist> | null>(null)
   const [error, setError] = useState('')

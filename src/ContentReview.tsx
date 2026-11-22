@@ -81,7 +81,11 @@ export default function ContentReview({ type, onType, onOpenPost, onOpenUser, on
     if (nextFilters.period !== 'all') params.set('period', nextFilters.period)
     if (nextFilters.sort !== 'newest') params.set('sort', nextFilters.sort)
     if (nextPage > 1) params.set('page', String(nextPage))
-    window.history.replaceState(window.history.state, '', window.location.pathname + (params.size ? '?' + params : ''))
+    const url = window.location.pathname + (params.size ? '?' + params : '')
+    if (url !== window.location.pathname + window.location.search) {
+      if (nextPage !== page) window.history.pushState(window.history.state, '', url)
+      else window.history.replaceState(window.history.state, '', url)
+    }
     setFilters(nextFilters)
     setPage(nextPage)
     setResult(null)

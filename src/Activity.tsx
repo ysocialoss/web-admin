@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { useHistoryPage } from './useHistoryPage'
 import { Button, ButtonGroup, Callout, Card, Classes, H1, HTMLTable, NonIdealState, Tag } from '@blueprintjs/core'
 import { z } from 'zod'
 import { AdminAccessError, adminRequest } from './adminApi'
@@ -46,7 +47,7 @@ export default function Activity({ onAccessLost, onOpenUser, onOpenPost }: {
   onOpenUser: (id: string) => void
   onOpenPost: (id: string) => void
 }) {
-  const [page, setPage] = useState(1)
+  const [page, setPage] = useHistoryPage()
   const [revision, setRevision] = useState(0)
   const [result, setResult] = useState<z.infer<typeof activityPage> | null>(null)
   const [error, setError] = useState('')

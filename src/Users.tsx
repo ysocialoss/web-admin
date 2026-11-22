@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { useHistoryPage } from './useHistoryPage'
 import { Button, Card, Checkbox, ContextMenu, H1, HTMLTable, InputGroup, Menu, MenuItem, PopoverNext, Tag } from '@blueprintjs/core'
 import { AdminAccessError, adminRequest, roles, updateUserRoles, userList } from './adminApi'
 import UserAvatar from './UserAvatar'
@@ -13,7 +14,7 @@ type Role = ManagedUser['role']
 export default function Users({ onAccessLost, onOpenUser }: { onAccessLost: () => void; onOpenUser: (id: string) => void }) {
   const [searchInput, setSearchInput] = useState('')
   const [query, setQuery] = useState('')
-  const [page, setPage] = useState(1)
+  const [page, setPage] = useHistoryPage()
   const [revision, setRevision] = useState(0)
   const [result, setResult] = useState<UsersPage | null>(null)
   const [error, setError] = useState('')

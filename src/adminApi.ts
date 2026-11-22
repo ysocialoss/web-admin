@@ -181,6 +181,8 @@ export async function adminRequest(path: string, signal?: AbortSignal, options?:
       if (error.data?.error === 'account_banned') throw new Error('Unban this account before approving it.')
       if (error.data?.error === 'attachment_required') throw new Error('Removing these attachments would leave the post empty. Delete the post instead.')
       if (error.data?.error === 'Handle is already taken') throw new Error('That username is already taken.')
+      if (error.data?.error === 'report_closed') throw new Error('This report was already handled.')
+      if (error.data?.error === 'report_already_open') throw new Error('The reporter has another open report on this content.')
       throw new Error('This role is protected.')
     }
     if (response.status === 503) throw new Error('Admin API unavailable. Check API configuration and database connectivity.')
@@ -244,4 +246,82 @@ export function useAdminHealth() {
     return () => controller.abort()
   }, [])
   return services
+}
+
+export const reportReasons = ['spam', 'harassment', 'hate', 'violence', 'sexual', 'self_harm', 'misinformation', 'impersonation', 'illegal', 'other'] as const
+export const reportReasonLabels: Record<(typeof reportReasons)[number], string> = {
+  spam: 'Spam', harassment: 'Harassment', hate: 'Hate speech', violence: 'Violence or threats', sexual: 'Sexual content',
+  self_harm: 'Self-harm', misinformation: 'Misinformation', impersonation: 'Impersonation', illegal: 'Illegal content', other: 'Other',
+}
+const reportSnapshot = z.discriminatedUnion('type', [
+  z.object({
+    type: z.literal('post'), kind: z.enum(['Post', 'Reply', 'Quote']), authorHandle: z.string(), authorName: z.string(),
+    content: z.string(), parentId: z.uuid().nullable(), quotedPostId: z.uuid().nullable(),
+    gifUrl: z.string().nullable(), imageIds: z.array(z.uuid()), hasVoice: z.boolean(), pollTitle: z.string().nullable(), createdAt: z.string(),
+  }),
+  z.object({
+    type: z.literal('user'), handle: z.string(), displayName: z.string(), bio: z.string(), pronouns: z.string(),
+    avatarUrl: z.string().nullable(), bannerUrl: z.string().nullable(),
+  }),
+  z.object({
+    type: z.literal('message'), peerHandle: z.string(),
+    messages: z.array(z.object({
+      id: z.uuid(), senderId: z.uuid(), senderHandle: z.string(), text: z.string(), createdAt: z.string(), reported: z.boolean(),
+    })),
+  }),
+])
+export type ReportSnapshot = z.infer<typeof reportSnapshot>
+const reportStatus = z.enum(['open', 'resolved', 'dismissed'])
+const reportRow = z.object({
+  id: z.uuid(), reporterId: z.uuid().nullable(), reporterHandle: z.string(),
+  targetType: z.enum(['post', 'user', 'message']), targetKey: z.uuid(), targetUserId: z.uuid().nullable(), targetHandle: z.string(),
+  reason: z.enum(reportReasons), details: z.string(), snapshot: reportSnapshot, status: reportStatus,
+  resolution: z.string().nullable(), note: z.string().nullable(), resolvedByHandle: z.string().nullable(), resolvedAt: z.string().nullable(),
+  createdAt: z.string(), openOnTarget: z.number(),
+})
+export type ReportRow = z.infer<typeof reportRow>
+export const reportPage = z.object({ reports: z.array(reportRow), hasNextPage: z.boolean(), canResolve: z.boolean(), canAct: z.boolean() })
+export const reportDetail = reportRow.extend({
+  related: z.array(z.object({
+    id: z.uuid(), reporterHandle: z.string(), reporterId: z.uuid().nullable(), reason: z.enum(reportReasons),
+    details: z.string(), status: reportStatus, createdAt: z.string(),
+  })),
+  target: z.object({
+    exists: z.boolean(),
+    owner: z.object({ id: z.uuid(), handle: z.string(), role: roles, bannedAt: z.string().nullable(), banReason: z.string().nullable() }).nullable(),
+    ownerReports: z.object({ total: z.number(), actioned: z.number() }),
+  }),
+  canResolve: z.boolean(), canAct: z.boolean(), canBan: z.boolean(),
+})
+export type ReportDetail = z.infer<typeof reportDetail>
+export type ReportResolution = {
+  decision: 'resolve' | 'dismiss'
+  note?: string
+  removeContent?: boolean
+  clearProfile?: ('bio' | 'avatar' | 'banner' | 'name')[]
+  ban?: { reason: string }
+}
+
+export async function resolveReport(id: string, resolution: ReportResolution) {
+  await adminRequest('/api/admin/reports/' + id + '/resolve', undefined, {
+    method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(resolution),
+  })
+}
+
+export async function reopenReport(id: string) {
+  await adminRequest('/api/admin/reports/' + id + '/reopen', undefined, { method: 'POST' })
+}
+
+export function useOpenReportCount(onAccessLost: () => void, refreshKey: unknown) {
+  const [count, setCount] = useState<number | null>(null)
+  useEffect(() => {
+    const controller = new AbortController()
+    const load = () => adminRequest('/api/admin/reports/summary', controller.signal)
+      .then(value => setCount(z.object({ open: z.number() }).parse(value).open))
+      .catch(cause => { if (cause instanceof AdminAccessError) onAccessLost() })
+    void load()
+    const timer = window.setInterval(() => void load(), 60_000)
+    return () => { controller.abort(); window.clearInterval(timer) }
+  }, [onAccessLost, refreshKey])
+  return count
 }

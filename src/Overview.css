@@ -238,3 +238,72 @@
   margin-bottom: 16px;
 }
 
+
+.admin-report-filters {
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.admin-report-filters .bp6-form-group {
+  margin: 0;
+}
+
+.admin-report-target {
+  display: flex;
+  gap: 4px;
+  margin-bottom: 4px;
+}
+
+.admin-report-layout {
+  display: grid;
+  gap: 16px;
+  grid-template-columns: minmax(0, 3fr) minmax(0, 2fr);
+  align-items: start;
+}
+
+@media (max-width: 900px) {
+  .admin-report-layout {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+.admin-report-snapshot {
+  display: grid;
+  gap: 12px;
+}
+
+.admin-report-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.admin-report-messages {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.admin-report-messages li {
+  padding: 8px 12px;
+  border-radius: 6px;
+  border: 1px solid var(--bp-surface-border-color-default, rgba(128, 128, 128, 0.25));
+}
+
+.admin-report-messages li[data-reported] {
+  border-color: var(--bp-intent-danger-rest, #cd4246);
+  background: rgba(205, 66, 70, 0.08);
+}
+
+.admin-report-layout > .admin-panel > dl,
+.admin-report-layout > .admin-panel > section,
+.admin-report-layout > .admin-panel > .admin-notice,
+.admin-report-layout > .admin-panel > .admin-report-snapshot {
+  padding: 0 16px 16px;
+}
+
+.admin-report-layout > .admin-panel > dl {
+  padding-top: 16px;
+}
