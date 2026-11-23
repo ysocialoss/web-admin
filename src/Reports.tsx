@@ -52,10 +52,11 @@ export default function Reports({ pathname, onNavigate, onOpenUser, onOpenPost, 
   onChanged: () => void
 }) {
   const id = /^\/reports\/([0-9a-f-]{36})\/?$/i.exec(pathname)?.[1]
+  const openReport = (reportId: string) => onNavigate('/reports/' + reportId)
   return id
-    ? <ReportView key={id} id={id} onBack={() => onNavigate('/reports')} onOpenUser={onOpenUser} onOpenPost={onOpenPost}
+    ? <ReportView key={id} id={id} onBack={() => onNavigate('/reports')} onOpenReport={openReport} onOpenUser={onOpenUser} onOpenPost={onOpenPost}
         onAccessLost={onAccessLost} onChanged={onChanged} />
-    : <ReportQueue onOpen={reportId => onNavigate('/reports/' + reportId)} onAccessLost={onAccessLost} />
+    : <ReportQueue onOpen={openReport} onAccessLost={onAccessLost} />
 }
 
 function ReportQueue({ onOpen, onAccessLost }: { onOpen: (id: string) => void; onAccessLost: () => void }) {
@@ -215,9 +216,10 @@ function SnapshotView({ report, onOpenUser, onOpenPost }: {
   </div>
 }
 
-function ReportView({ id, onBack, onOpenUser, onOpenPost, onAccessLost, onChanged }: {
+function ReportView({ id, onBack, onOpenReport, onOpenUser, onOpenPost, onAccessLost, onChanged }: {
   id: string
   onBack: () => void
+  onOpenReport: (id: string) => void
   onOpenUser: (id: string) => void
   onOpenPost: (id: string) => void
   onAccessLost: () => void
@@ -305,7 +307,10 @@ function ReportView({ id, onBack, onOpenUser, onOpenPost, onAccessLost, onChange
           <h3 id="related-reports" className={Classes.HEADING}>Other reports on this content ({report.related.length})</h3>
           <HTMLTable compact className="overview-table">
             <tbody>{report.related.map(row => <tr key={row.id}>
-              <td>@{row.reporterHandle}</td>
+              <td><a href={'/reports/' + row.id} onClick={event => {
+                event.preventDefault()
+                onOpenReport(row.id)
+              }}>@{row.reporterHandle}</a></td>
               <td>{reportReasonLabels[row.reason]}{row.details && <div className={Classes.TEXT_MUTED}>{row.details}</div>}</td>
               <td><Tag minimal intent={statusIntent[row.status]}>{row.status}</Tag></td>
               <td><time dateTime={row.createdAt}>{new Date(row.createdAt).toLocaleDateString()}</time></td>
@@ -338,7 +343,6 @@ function ResolveDialog({ report, decision, onClose, onDone, onAccessLost }: {
   const [banReason, setBanReason] = useState(() => reportReasonLabels[report.reason])
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
-  const canRemove = report.canAct && report.target.exists && report.targetType !== 'user'
   const total = report.related.filter(row => row.status === 'open').length + 1
 
   async function submit() {
@@ -366,12 +370,13 @@ function ResolveDialog({ report, decision, onClose, onDone, onAccessLost }: {
     <DialogBody>
       <p>{total > 1 ? `This closes all ${total} open reports on this content.` : 'This closes the report.'}</p>
       {decision === 'resolve' && <>
-        {!report.canAct && <Callout intent="primary" icon="info-sign" className="admin-notice">
-          Moderators can resolve reports. Removing content and banning accounts need an admin.
+        {!report.canAct && report.targetType === 'post' && report.target.exists && !report.canRemoveContent && <Callout intent="primary" icon="info-sign" className="admin-notice">
+          To remove this post, open a report filed by another account.
         </Callout>}
-        {canRemove && <Checkbox checked={removeContent} onChange={event => setRemoveContent(event.currentTarget.checked)}
+        {report.canRemoveContent && <Checkbox checked={removeContent} onChange={event => setRemoveContent(event.currentTarget.checked)}
           label={report.targetType === 'message' ? 'Delete the reported message for both participants'
-            : `Remove this ${targetLabel(report).toLowerCase()} and all replies to it`} />}
+            : report.canAct ? `Remove this ${targetLabel(report).toLowerCase()} and all replies to it`
+              : `Remove this ${targetLabel(report).toLowerCase()} and keep its replies`} />}
         {report.canAct && report.targetType === 'user' && <FormGroup label="Clear from profile">
           {(['name', 'bio', 'avatar', 'banner'] as const).map(part =>
             <Checkbox key={part} inline checked={clearProfile.includes(part)} onChange={() => toggle(part)}

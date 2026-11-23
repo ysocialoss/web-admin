@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Alert, Button, ButtonGroup, Callout, Card, Classes, FormGroup, H1, HTMLSelect, HTMLTable, InputGroup, NonIdealState, SegmentedControl, Tag } from '@blueprintjs/core'
 import { z } from 'zod'
-import { AdminAccessError, adminRequest, postList } from './adminApi'
+import { AdminAccessError, adminRequest, postList, setPostVisibility } from './adminApi'
 import { LoadingRows, LoadingStatus } from './LoadingState'
 import ContentMenu, { type ContentAction } from './ContentMenu'
 import PostPreview, { PostVoice } from './PostPreview'
@@ -11,10 +11,11 @@ const periodFilter = z.enum(['all', '1d', '7d', '30d']).catch('all')
 const sortFilter = z.enum(['newest', 'oldest', 'author_asc', 'author_desc']).catch('newest')
 const defaultFilters = { q: '', author: '', period: periodFilter.parse(undefined), sort: sortFilter.parse(undefined) }
 type PostRow = z.infer<typeof postList>['posts'][number]
-type Removal = { post: PostRow; kind: 'post' | 'gif' | 'voice' | 'images' | 'all' }
+type PostChange = { post: PostRow; kind: 'visibility' | 'post' | 'gif' | 'voice' | 'images' | 'all' }
 const attachmentLabels = { gif: 'GIF', voice: 'voice message', images: 'images' }
 
-function removalLabel({ post, kind }: Removal) {
+function changeLabel({ post, kind }: PostChange) {
+  if (kind === 'visibility') return (post.hiddenAt ? 'Unhide ' : 'Hide ') + post.kind
   if (kind === 'post') return 'Delete ' + post.kind
   if (kind === 'all') return 'Clear All Attachments'
   return 'Remove ' + attachmentLabels[kind]
@@ -48,7 +49,7 @@ export default function ContentReview({ type, onType, onOpenPost, onOpenUser, on
   const [result, setResult] = useState<ReturnType<typeof postList.parse> | null>(null)
   const [error, setError] = useState('')
   const [feedback, setFeedback] = useState<{ intent: 'success' | 'danger'; text: string } | null>(null)
-  const [removal, setRemoval] = useState<Removal | null>(null)
+  const [change, setChange] = useState<PostChange | null>(null)
   const [removing, setRemoving] = useState(false)
   const [removalError, setRemovalError] = useState('')
 
@@ -100,36 +101,40 @@ export default function ContentReview({ type, onType, onOpenPost, onOpenUser, on
     if (type !== 'all') onType('all')
   }
 
-  function postActions(post: PostRow, canModerate: boolean): ContentAction[] {
+  function postActions(post: PostRow, permissions: Pick<NonNullable<typeof result>, 'canModerate' | 'canSetVisibility'>): ContentAction[] {
     const actions: ContentAction[] = [
       { label: 'Open details', icon: 'document-open', run: () => onOpenPost(post.id) },
       { label: 'Copy post ID', icon: 'clipboard', run: () => void copy(post.id, 'Post ID') },
     ]
     if (post.content) actions.push({ label: 'Copy text', icon: 'clipboard', run: () => void copy(post.content, 'Post text') })
-    if (!canModerate) return actions
-
-    function removalAction(kind: Removal['kind']): ContentAction {
+    function changeAction(kind: PostChange['kind']): ContentAction {
       return {
-        label: removalLabel({ post, kind }), icon: kind === 'post' ? 'trash' : 'eraser', intent: 'danger',
-        run: () => { setRemovalError(''); setRemoval({ post, kind }) },
+        label: changeLabel({ post, kind }),
+        icon: kind === 'visibility' ? (post.hiddenAt ? 'eye-open' : 'eye-off') : kind === 'post' ? 'trash' : 'eraser',
+        intent: kind === 'visibility' ? undefined : 'danger',
+        run: () => { setRemovalError(''); setChange({ post, kind }) },
       }
     }
 
-    if (post.gif) actions.push(removalAction('gif'))
-    if (post.voiceUrl) actions.push(removalAction('voice'))
-    if (post.imageIds.length) actions.push(removalAction('images'))
-    if (post.gif || post.voiceUrl || post.imageIds.length || post.hasPoll) actions.push(removalAction('all'))
-    actions.push(removalAction('post'))
+    if (permissions.canSetVisibility) actions.push(changeAction('visibility'))
+    if (!permissions.canModerate) return actions
+    if (post.gif) actions.push(changeAction('gif'))
+    if (post.voiceUrl) actions.push(changeAction('voice'))
+    if (post.imageIds.length) actions.push(changeAction('images'))
+    if (post.gif || post.voiceUrl || post.imageIds.length || post.hasPoll) actions.push(changeAction('all'))
+    actions.push(changeAction('post'))
     return actions
   }
 
-  async function remove({ post, kind }: Removal) {
+  async function applyChange({ post, kind }: PostChange) {
     setRemoving(true)
     setRemovalError('')
     try {
-      await adminRequest('/api/admin/posts/' + post.id + (kind === 'post' ? '' : '/attachments/' + kind), undefined, { method: 'DELETE' })
-      setRemoval(null)
-      setFeedback({ intent: 'success', text: kind === 'post' ? post.kind + ' deleted.'
+      if (kind === 'visibility') await setPostVisibility(post.id, !post.hiddenAt)
+      else await adminRequest('/api/admin/posts/' + post.id + (kind === 'post' ? '' : '/attachments/' + kind), undefined, { method: 'DELETE' })
+      setChange(null)
+      setFeedback({ intent: 'success', text: kind === 'visibility' ? post.kind + (post.hiddenAt ? ' unhidden.' : ' hidden.')
+        : kind === 'post' ? post.kind + ' deleted.'
         : kind === 'all' ? 'Attachments cleared.' : kind === 'images' ? 'Images removed.'
           : kind === 'gif' ? 'GIF removed.' : 'Voice message removed.' })
       load(kind === 'post' && result?.posts.length === 1 && page > 1 ? page - 1 : page)
@@ -197,7 +202,7 @@ export default function ContentReview({ type, onType, onOpenPost, onOpenUser, on
             <thead><tr><th scope="col">Content</th><th scope="col">Author</th><th scope="col">Type</th><th scope="col">Published</th></tr></thead>
             <tbody>{result.posts.map(post => <tr key={post.id}>
               <td><ContentMenu label={post.content || post.gif?.title || (post.imageIds.length ? 'Image attachment' : post.voiceUrl ? 'Voice message' : 'Open media post')}
-                onActivate={() => onOpenPost(post.id)} actions={postActions(post, result.canModerate)}>
+                onActivate={() => onOpenPost(post.id)} actions={postActions(post, result)}>
                 <PostPreview content={post.content} gif={post.gif} voiceUrl={post.voiceUrl} imageIds={post.imageIds} />
               </ContentMenu>
               {post.voiceUrl && <PostVoice url={post.voiceUrl} compact />}</td>
@@ -212,7 +217,8 @@ export default function ContentReview({ type, onType, onOpenPost, onOpenUser, on
               <td><ContentMenu label={post.kind} actions={[
                 { label: post.kind === 'Post' ? 'Show only posts' : 'Show only replies', icon: 'filter', run: () => onType(post.kind.toLowerCase()) },
                 { label: 'Show all content', icon: 'filter-remove', run: () => onType('all') },
-              ]}><Tag minimal intent={post.kind === 'Reply' ? 'primary' : 'none'}>{post.kind}</Tag></ContentMenu></td>
+              ]}><Tag minimal intent={post.kind === 'Reply' ? 'primary' : 'none'}>{post.kind}</Tag></ContentMenu>
+              {post.hiddenAt && <Tag minimal intent="warning">Hidden</Tag>}</td>
               <td className={Classes.TEXT_MUTED}><ContentMenu label={new Date(post.time).toLocaleString()} actions={[
                 { label: 'Copy timestamp', icon: 'clipboard', run: () => void copy(post.time, 'Timestamp') },
               ]}><time dateTime={post.time}>{new Date(post.time).toLocaleString()}</time></ContentMenu></td>
@@ -228,14 +234,16 @@ export default function ContentReview({ type, onType, onOpenPost, onOpenUser, on
         </div>
       </>}
     </Card>
-    {removal && <Alert isOpen intent="danger" icon="trash" loading={removing}
-      cancelButtonText="Cancel" confirmButtonText={removalLabel(removal)}
-      onCancel={() => setRemoval(null)} onConfirm={() => void remove(removal)}>
-      <p>{removal.kind === 'post'
-        ? `Permanently delete this ${removal.post.kind.toLowerCase()} by ${removal.post.author} and all its replies?`
-        : removal.kind === 'all'
-          ? `Clear all attachments from this ${removal.post.kind.toLowerCase()} by ${removal.post.author}? Clearing a poll also removes its votes.`
-        : `Remove the ${attachmentLabels[removal.kind]} from this ${removal.post.kind.toLowerCase()} by ${removal.post.author}?`}</p>
+    {change && <Alert isOpen intent={change.kind === 'visibility' ? 'primary' : 'danger'}
+      icon={change.kind === 'visibility' ? (change.post.hiddenAt ? 'eye-open' : 'eye-off') : 'trash'} loading={removing}
+      cancelButtonText="Cancel" confirmButtonText={changeLabel(change)}
+      onCancel={() => setChange(null)} onConfirm={() => void applyChange(change)}>
+      <p>{change.kind === 'visibility' ? `${changeLabel(change)} by ${change.post.author}?`
+        : change.kind === 'post'
+          ? `Permanently delete this ${change.post.kind.toLowerCase()} by ${change.post.author} and all its replies?`
+          : change.kind === 'all'
+            ? `Clear all attachments from this ${change.post.kind.toLowerCase()} by ${change.post.author}? Clearing a poll also removes its votes.`
+            : `Remove the ${attachmentLabels[change.kind]} from this ${change.post.kind.toLowerCase()} by ${change.post.author}?`}</p>
       {removalError && <Callout intent="danger" role="alert">{removalError}</Callout>}
     </Alert>}
   </section>

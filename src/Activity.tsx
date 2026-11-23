@@ -33,6 +33,8 @@ const actionLabels: Record<string, string> = {
   addBadge: 'Added badge',
   removeBadge: 'Removed badge',
   removePost: 'Removed content',
+  hidePost: 'Hid content',
+  unhidePost: 'Restored visibility',
   editPostText: 'Edited post text',
   removeGif: 'Removed GIF',
   removeVoice: 'Removed voice message',
@@ -99,7 +101,7 @@ export default function Activity({ onAccessLost, onOpenUser, onOpenPost }: {
               <td><Button variant="minimal" onClick={() => onOpenUser(entry.actorId)}>@{entry.actorHandle}</Button></td>
               <td className="admin-activity-target">{entry.action === 'removePost'
                 ? <><div>{entry.targetHandle ? 'By @' + entry.targetHandle : 'Content'}</div><code>{entry.targetId}</code></>
-                : ['editPostText', 'removeGif', 'removeVoice', 'addImage', 'replaceImage', 'removeImage', 'removeImages', 'clearAttachments'].includes(entry.action)
+                : ['hidePost', 'unhidePost', 'editPostText', 'removeGif', 'removeVoice', 'addImage', 'replaceImage', 'removeImage', 'removeImages', 'clearAttachments'].includes(entry.action)
                   ? <Button variant="minimal" onClick={() => onOpenPost(entry.targetId)}>
                       {entry.targetHandle ? 'Post by @' + entry.targetHandle : 'View post'}
                     </Button>

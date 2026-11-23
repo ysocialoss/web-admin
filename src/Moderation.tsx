@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { AdminAccessError, adminRequest, targetSchema } from './adminApi'
+import { AdminAccessError, adminRequest, setPostVisibility, targetSchema } from './adminApi'
 import type { AccountAction, ModerationDetail } from './adminApi'
 import UserAvatar from './UserAvatar'
 import { LoadingRows, LoadingStatus } from './LoadingState'
@@ -30,7 +30,7 @@ export default function Moderation({ onAccessLost, pathname, onNavigate, onOpenP
   const [accountAction, setAccountAction] = useState<AccountAction | null>(null)
   const [badgeUserId, setBadgeUserId] = useState<string | null>(null)
   const [editingPostId, setEditingPostId] = useState<string | null>(null)
-  const [confirmRemoval, setConfirmRemoval] = useState<'post' | 'images' | null>(null)
+  const [confirmation, setConfirmation] = useState<'post' | 'images' | 'visibility' | null>(null)
   const [removing, setRemoving] = useState(false)
   const [actionError, setActionError] = useState('')
   const [notice, setNotice] = useState('')
@@ -57,21 +57,23 @@ export default function Moderation({ onAccessLost, pathname, onNavigate, onOpenP
   const error = current && 'error' in current ? current.error : ''
   const target = current && 'target' in current ? current.target : null
   const isUser = /^\/moderation\/user\//i.test(pathname)
+  const visibilityLabel = target?.kind === 'post' ? `${target.hiddenAt ? 'Unhide' : 'Hide'} ${target.type.toLowerCase()}` : ''
 
-  async function remove(id: string, kind: 'post' | 'images') {
+  async function applyChange(post: Extract<ModerationDetail, { kind: 'post' }>, kind: NonNullable<typeof confirmation>) {
     setRemoving(true)
     setActionError('')
     try {
-      await adminRequest('/api/admin/posts/' + id + (kind === 'images' ? '/attachments/images' : ''), undefined, { method: 'DELETE' })
+      if (kind === 'visibility') await setPostVisibility(post.id, !post.hiddenAt)
+      else await adminRequest('/api/admin/posts/' + post.id + (kind === 'images' ? '/attachments/images' : ''), undefined, { method: 'DELETE' })
       if (kind === 'post') onRemoved()
       else {
-        setConfirmRemoval(null)
+        setConfirmation(null)
         setRevision(value => value + 1)
-        setNotice('Images removed.')
+        setNotice(kind === 'images' ? 'Images removed.' : post.type + (post.hiddenAt ? ' unhidden.' : ' hidden.'))
       }
     } catch (cause) {
       if (cause instanceof AdminAccessError) onAccessLost()
-      else setActionError(cause instanceof Error ? cause.message : 'Could not remove content.')
+      else setActionError(cause instanceof Error ? cause.message : 'Could not complete this action.')
     } finally {
       setRemoving(false)
     }
@@ -88,8 +90,11 @@ export default function Moderation({ onAccessLost, pathname, onNavigate, onOpenP
             onBadges={target.canEditBadges ? () => setBadgeUserId(target.id) : undefined} />}>
           <Button icon="edit" endIcon="chevron-down">Profile actions</Button>
         </PopoverNext>}
-        {target?.kind === 'post' && target.canRemove &&
-          <Button intent="danger" icon="trash" onClick={() => setConfirmRemoval('post')}>Remove {target.type.toLowerCase()}</Button>}
+        {target?.kind === 'post' && <div className="admin-toolbar">
+          {target.canSetVisibility && <Button icon={target.hiddenAt ? 'eye-open' : 'eye-off'}
+            onClick={() => setConfirmation('visibility')}>{visibilityLabel}</Button>}
+          {target.canRemove && <Button intent="danger" icon="trash" onClick={() => setConfirmation('post')}>Remove {target.type.toLowerCase()}</Button>}
+        </div>}
       </header>
       {(notice || navigationNotice) && <Callout className="admin-notice" intent="success" role="status">{notice || navigationNotice}</Callout>}
       <Card>
@@ -104,6 +109,7 @@ export default function Moderation({ onAccessLost, pathname, onNavigate, onOpenP
           <div className="admin-post-meta">
             <Button icon="person" variant="minimal" onClick={() => onNavigate('/moderation/user/' + target.authorId)}>{target.author}</Button>
             <Text className={Classes.TEXT_MUTED}><time dateTime={target.time}>{new Date(target.time).toLocaleString()}</time></Text>
+            {target.hiddenAt && <Tag minimal intent="warning">Hidden</Tag>}
           </div>
           {target.content && <Text className="overview-details">{target.content}</Text>}
           {target.canRemove && <Button variant="minimal" icon="edit" onClick={() => setEditingPostId(target.id)}>Edit text</Button>}
@@ -114,7 +120,7 @@ export default function Moderation({ onAccessLost, pathname, onNavigate, onOpenP
               setRevision(value => value + 1)
             }} />
           {target.canRemove && target.imageIds.length > 0 &&
-            <Button variant="minimal" intent="danger" icon="eraser" onClick={() => setConfirmRemoval('images')}>Remove images</Button>}
+            <Button variant="minimal" intent="danger" icon="eraser" onClick={() => setConfirmation('images')}>Remove images</Button>}
           {target.voiceUrl && <PostVoice url={target.voiceUrl} />}
           {target.pollTitle && <Callout icon="chart" title="Poll">{target.pollTitle}</Callout>}
           {target.quotedPostId && <Button variant="minimal" icon="citation"
@@ -154,11 +160,13 @@ export default function Moderation({ onAccessLost, pathname, onNavigate, onOpenP
             setNotice(target.handle + (accountAction === 'ban' ? ' banned.' : ' unbanned.'))
           }
         }} />}
-      {target?.kind === 'post' && confirmRemoval && <Alert isOpen intent="danger" icon="trash"
-        loading={removing} cancelButtonText="Cancel" confirmButtonText={confirmRemoval === 'images' ? 'Remove images' : `Remove ${target.type.toLowerCase()}`}
-        onCancel={() => { setConfirmRemoval(null); setActionError('') }}
-        onConfirm={() => void remove(target.id, confirmRemoval)}>
-        <p>{confirmRemoval === 'images' ? `Remove the images from this ${target.type.toLowerCase()} by ${target.author}?`
+      {target?.kind === 'post' && confirmation && <Alert isOpen intent={confirmation === 'visibility' ? 'primary' : 'danger'}
+        icon={confirmation === 'visibility' ? (target.hiddenAt ? 'eye-open' : 'eye-off') : 'trash'} loading={removing} cancelButtonText="Cancel"
+        confirmButtonText={confirmation === 'visibility' ? visibilityLabel : confirmation === 'images' ? 'Remove images' : `Remove ${target.type.toLowerCase()}`}
+        onCancel={() => { setConfirmation(null); setActionError('') }}
+        onConfirm={() => void applyChange(target, confirmation)}>
+        <p>{confirmation === 'visibility' ? `${visibilityLabel} by ${target.author}?`
+          : confirmation === 'images' ? `Remove the images from this ${target.type.toLowerCase()} by ${target.author}?`
           : `Permanently remove this ${target.type.toLowerCase()} by ${target.author} and all its replies?`}</p>
         {actionError && <Callout intent="danger" role="alert">{actionError}</Callout>}
       </Alert>}
