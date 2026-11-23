@@ -87,6 +87,34 @@ export async function updateUserProfile(id: string, change: ProfileChange) {
   return managedUser.parse(result)
 }
 
+export async function replaceUserProfileImage(id: string, kind: 'avatar' | 'banner', file: File) {
+  let query = ''
+  if (kind === 'banner') {
+    const url = URL.createObjectURL(file)
+    const image = new Image()
+    try {
+      image.src = url
+      await image.decode()
+      const aspect = image.naturalWidth / image.naturalHeight
+      const width = Math.min(1, 3 / aspect)
+      const height = Math.min(1, aspect / 3)
+      query = '?' + new URLSearchParams({
+        crop: JSON.stringify({ x: (1 - width) / 2, y: (1 - height) / 2, width, height }),
+      })
+    } catch {
+      throw new Error('Could not open this banner image.')
+    } finally {
+      URL.revokeObjectURL(url)
+    }
+  }
+  const result = await adminRequest('/api/admin/users/' + id + '/profile/' + kind + query, undefined, {
+    method: 'PUT',
+    headers: { 'Content-Type': file.type },
+    body: file,
+  })
+  return z.object({ url: z.string() }).parse(result).url
+}
+
 export async function updateUserRoles(ids: string[], role: ManagedUser['role']) {
   const result = await adminRequest('/api/admin/users/roles', undefined, {
     method: 'PATCH',
@@ -179,6 +207,9 @@ export class AdminRoleRequiredError extends Error {
 
 const requestErrors = new Map([
   ['independent_post_report_required', 'Open a report filed by another account to remove this post.'],
+  ['avatar_png_required', 'Choose a PNG image for the avatar.'],
+  ['invalid_avatar', 'Choose a valid static PNG image.'],
+  ['invalid_banner', 'Choose a valid PNG, JPEG, WebP, GIF, or AVIF image.'],
   ['invalid_post_image', 'Choose a static JPEG, PNG, or WebP image.'],
   ['post_image_limit', 'A post can have at most four images.'],
   ['post_image_busy', 'Image uploads are busy. Try again shortly.'],

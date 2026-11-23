@@ -1,10 +1,11 @@
 import { useEffect, useState } from 'react'
 import { AdminAccessError, adminRequest, setPostVisibility, targetSchema } from './adminApi'
-import type { AccountAction, ModerationDetail, ProfileChange } from './adminApi'
+import type { AccountAction, ModerationDetail } from './adminApi'
 import UserAvatar from './UserAvatar'
 import { LoadingRows, LoadingStatus } from './LoadingState'
 import { Alert, Button, Callout, Card, Classes, H1, H4, NonIdealState, PopoverNext, Tag, Text } from '@blueprintjs/core'
 import { AccountActionDialog, UserActionDialog, UserActions } from './UserActions'
+import type { UserProfileAction } from './UserActions'
 import { UserBadgesDialog } from './UserBadgesDialog'
 import UserPosts from './UserPosts'
 import { PostGif, PostVoice } from './PostPreview'
@@ -25,7 +26,7 @@ export default function Moderation({ onAccessLost, pathname, onNavigate, onOpenP
   const match = /^\/moderation\/(user|post)\/([0-9a-f-]+)\/?$/i.exec(pathname)
   const detailPath = match ? '/api/admin/' + match[1].toLowerCase() + '/' + match[2] : null
   const [revision, setRevision] = useState(0)
-  const [profileAction, setProfileAction] = useState<ProfileChange['action'] | null>(null)
+  const [profileAction, setProfileAction] = useState<UserProfileAction | null>(null)
   const [accountAction, setAccountAction] = useState<AccountAction | null>(null)
   const [badgeUserId, setBadgeUserId] = useState<string | null>(null)
   const [editingPostId, setEditingPostId] = useState<string | null>(null)

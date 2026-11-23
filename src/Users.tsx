@@ -5,8 +5,9 @@ import { AdminAccessError, adminRequest, roles, updateUserRoles, userList } from
 import UserAvatar from './UserAvatar'
 import { LoadingRows, LoadingStatus } from './LoadingState'
 import { AccountActionDialog, BulkProfileActionDialog, UserActions, UserActionDialog } from './UserActions'
+import type { UserProfileAction } from './UserActions'
 import { UserBadgesDialog } from './UserBadgesDialog'
-import type { AccountAction, BulkProfileAction, ManagedUser, ProfileChange } from './adminApi'
+import type { AccountAction, BulkProfileAction, ManagedUser } from './adminApi'
 
 type UsersPage = ReturnType<typeof userList.parse>
 type Role = ManagedUser['role']
@@ -21,7 +22,7 @@ export default function Users({ onAccessLost, onOpenUser }: { onAccessLost: () =
   const [selected, setSelected] = useState<string[]>([])
   const [bulkRole, setBulkRole] = useState<Role | null>(null)
   const [saving, setSaving] = useState<'bulk' | { userId: string } | null>(null)
-  const [profileAction, setProfileAction] = useState<{ user: ManagedUser; action: ProfileChange['action'] } | null>(null)
+  const [profileAction, setProfileAction] = useState<{ user: ManagedUser; action: UserProfileAction } | null>(null)
   const [bulkProfileAction, setBulkProfileAction] = useState<BulkProfileAction | null>(null)
   const [accountAction, setAccountAction] = useState<{ user: ManagedUser; action: AccountAction } | null>(null)
   const [badgeUserId, setBadgeUserId] = useState<string | null>(null)
@@ -199,7 +200,7 @@ export default function Users({ onAccessLost, onOpenUser }: { onAccessLost: () =
       }} />}
     {profileAction && <UserActionDialog {...profileAction} onClose={() => setProfileAction(null)} onAccessLost={onAccessLost}
       onSaved={updated => {
-        setResult(current => current && { ...current, users: current.users.map(user => user.id === updated.id ? updated : user) })
+        setResult(current => current && { ...current, users: current.users.map(user => user.id === updated.id ? { ...user, ...updated } : user) })
         setProfileAction(null)
         setNotice({ kind: 'success', text: 'Profile updated.' })
       }} />}
