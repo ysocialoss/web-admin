@@ -1,4 +1,5 @@
-import { useAdminHealth } from './adminApi'
+import { useSystemStatus, available, formatAge, serviceLabels, overallStatus, statusIntent } from './systemApi'
+import BarChart from './BarChart'
 import UserAvatar from './UserAvatar'
 import PostPreview, { PostVoice } from './PostPreview'
 import { LoadingRows, LoadingStatus } from './LoadingState'
@@ -7,18 +8,21 @@ import type { ModerationTarget } from './Moderation'
 import { Button, Card, Classes, H1, H2, HTMLTable, Icon, Tag, Text } from '@blueprintjs/core'
 import './Overview.css'
 
-export default function Overview({ data, onOpenModeration, onNavigate, onRefresh }: {
+export default function Overview({ data, onOpenModeration, onNavigate, onRefresh, onAccessLost }: {
   data: AdminOverview
   onOpenModeration: (target: ModerationTarget) => void
   onNavigate: (path: string) => void
   onRefresh: () => void
+  onAccessLost: () => void
 }) {
-  const services = useAdminHealth()
+  const system = useSystemStatus(onAccessLost, 30_000)
+  const status = system.data
+  const overall = status && overallStatus(status.services)
 
   return <section className="overview" aria-labelledby="overview-title">
     <header className="overview-heading">
       <H1 id="overview-title">Overview</H1>
-      <Button icon="refresh" variant="minimal" onClick={onRefresh}>Refresh</Button>
+      <Button icon="refresh" variant="minimal" onClick={() => { onRefresh(); system.refresh() }}>Refresh</Button>
     </header>
     <div className="overview-metrics" aria-label="Community summary">
       {data.metrics.map(metric => <Card key={metric.label} className="admin-metric">
@@ -30,13 +34,39 @@ export default function Overview({ data, onOpenModeration, onNavigate, onRefresh
       <Card className="admin-metric">
         <Icon icon="pulse" className="admin-metric-icon" />
         <Text className={Classes.TEXT_MUTED}>System status</Text>
-        {services === null ? <LoadingStatus label="Checking services…" /> : <div className="admin-service-list">
-          {services.map(({ name, status }) => <div key={name}>
-            <Text>{name}</Text><Tag minimal intent={status === 'ok' ? 'success' : 'warning'}>{status}</Tag>
-          </div>)}
-        </div>}
+        {!status ? (system.error ? <Tag minimal intent="warning">Unavailable</Tag> : <LoadingStatus label="Checking services…" />) : <>
+          {overall && <Tag intent={overall.intent} minimal>{overall.text}</Tag>}
+          <div className="admin-service-list">
+            {Object.entries(status.services).map(([key, check]) => <div key={key}>
+              <Text>{serviceLabels[key] ?? key}</Text>
+              <span><span className={Classes.TEXT_MUTED}>{check.latencyMs} ms </span><Tag minimal intent={statusIntent(check.status)}>{check.status === 'ok' ? 'ok' : check.status.replace('_', ' ')}</Tag></span>
+            </div>)}
+          </div>
+          <Button variant="minimal" size="small" endIcon="arrow-right" onClick={() => onNavigate('/system')}>Full system status</Button>
+        </>}
       </Card>
     </div>
+    {status && <div className="overview-metrics overview-metrics-secondary" aria-label="Operations summary">
+      {available(status.community) && <Card className="admin-metric">
+        <Text className={Classes.TEXT_MUTED}>Community</Text>
+        <strong className="overview-metric-number">{status.community.activeSessions.toLocaleString()}</strong>
+        <Text className={Classes.TEXT_MUTED}>active sessions · {status.community.users.pendingApproval} awaiting approval · {status.community.users.banned} banned</Text>
+        <BarChart data={status.community.signupsByDay} label="Signups, 14 days" unit="signups" />
+      </Card>}
+      {available(status.community) && <Card className="admin-metric">
+        <Text className={Classes.TEXT_MUTED}>Posting activity</Text>
+        <strong className="overview-metric-number">{status.community.posts.last7d.toLocaleString()}</strong>
+        <Text className={Classes.TEXT_MUTED}>posts and replies this week</Text>
+        <BarChart data={status.community.postsByDay} label="Posts, 14 days" unit="posts" />
+      </Card>}
+      {available(status.moderation) && <Card className="admin-metric">
+        <Text className={Classes.TEXT_MUTED}>Moderation workload</Text>
+        <strong className="overview-metric-number">{status.moderation.openReports}</strong>
+        <Text className={Classes.TEXT_MUTED}>open reports{status.moderation.oldestOpenReportAt ? ` · oldest ${formatAge(status.moderation.oldestOpenReportAt)}` : ''}</Text>
+        <Text className={Classes.TEXT_MUTED}>{status.moderation.imageFlags7d} image flags this week · {status.moderation.actions24h} staff actions today</Text>
+        <Button variant="minimal" size="small" endIcon="arrow-right" onClick={() => onNavigate('/reports')}>Review reports</Button>
+      </Card>}
+    </div>}
     <div className="overview-columns">
       <Card className="admin-panel">
         <header className="admin-toolbar">
