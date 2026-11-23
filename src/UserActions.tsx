@@ -1,14 +1,17 @@
 import { useState } from 'react'
 import { Alert, Button, Callout, Dialog, DialogBody, DialogFooter, FormGroup, HTMLSelect, InputGroup, Menu, MenuDivider, MenuItem, TextArea } from '@blueprintjs/core'
-import { AdminAccessError, moderateAccount, updateUserProfile, updateUserProfiles } from './adminApi'
+import { AdminAccessError, moderateAccount, replaceUserProfileImage, updateUserProfile, updateUserProfiles } from './adminApi'
 import type { AccountAction, BulkProfileAction, ManagedUser, ProfileChange } from './adminApi'
 import { PronounsField } from './PronounsField'
 
 type Action = ProfileChange['action']
+type ImageAction = 'replaceAvatar' | 'replaceBanner'
+export type UserProfileAction = Action | ImageAction
+type SavedProfile = Pick<ManagedUser, 'id'> & Partial<ManagedUser>
 
 export function UserActions({ user, onAction, onAccountAction, onBadges }: {
   user: Pick<ManagedUser, 'handle' | 'bannedAt' | 'canModerateAccount'>
-  onAction: (action: Action) => void
+  onAction: (action: UserProfileAction) => void
   onAccountAction: (action: AccountAction) => void
   onBadges?: () => void
 }) {
@@ -16,6 +19,8 @@ export function UserActions({ user, onAction, onAccountAction, onBadges }: {
     <MenuItem text="Clear Bio" icon="eraser" onClick={() => onAction('clearBio')} />
     <MenuItem text="Clear Avatar" icon="media" onClick={() => onAction('clearAvatar')} />
     <MenuItem text="Clear Banner" icon="media" onClick={() => onAction('clearBanner')} />
+    <MenuItem text="Replace Avatar" icon="upload" onClick={() => onAction('replaceAvatar')} />
+    <MenuItem text="Replace Banner" icon="upload" onClick={() => onAction('replaceBanner')} />
     <MenuDivider />
     <MenuItem text="Change Username" icon="edit" onClick={() => onAction('changeUsername')} />
     <MenuItem text="Change Name" icon="edit" onClick={() => onAction('changeName')} />
@@ -113,11 +118,15 @@ const confirmText = {
 
 export function UserActionDialog({ user, action, onClose, onSaved, onAccessLost }: {
   user: Pick<ManagedUser, 'id' | 'handle' | 'name' | 'bio' | 'pronouns'>
-  action: Action
+  action: UserProfileAction
   onClose: () => void
-  onSaved: (user: ManagedUser) => void
+  onSaved: (user: SavedProfile) => void
   onAccessLost: () => void
 }) {
+  if (action === 'replaceAvatar' || action === 'replaceBanner') {
+    return <ProfileImageDialog key={user.id + action} user={user} kind={action === 'replaceAvatar' ? 'avatar' : 'banner'}
+      onClose={onClose} onSaved={onSaved} onAccessLost={onAccessLost} />
+  }
   const initialValue = action === 'changeUsername' ? user.handle.slice(1)
     : action === 'changeBio' ? user.bio
     : action === 'changePronouns' ? user.pronouns : user.name
@@ -127,6 +136,59 @@ export function UserActionDialog({ user, action, onClose, onSaved, onAccessLost 
         ? { action, value } : { action }
       onSaved(await updateUserProfile(user.id, change))
     }} />
+}
+
+function ProfileImageDialog({ user, kind, onClose, onSaved, onAccessLost }: {
+  user: Pick<ManagedUser, 'id' | 'handle'>
+  kind: 'avatar' | 'banner'
+  onClose: () => void
+  onSaved: (user: SavedProfile) => void
+  onAccessLost: () => void
+}) {
+  const [file, setFile] = useState<File>()
+  const [saving, setSaving] = useState(false)
+  const [error, setError] = useState('')
+  const avatar = kind === 'avatar'
+  const maxMiB = avatar ? 2 : 10
+  const accept = avatar ? 'image/png' : 'image/png,image/jpeg,image/webp,image/gif,image/avif'
+
+  async function submit() {
+    if (!file || saving) return
+    setSaving(true)
+    setError('')
+    try {
+      const url = await replaceUserProfileImage(user.id, kind, file)
+      onSaved(avatar ? { id: user.id, avatarUrl: url } : { id: user.id })
+    } catch (cause) {
+      if (cause instanceof AdminAccessError) onAccessLost()
+      else setError(cause instanceof Error ? cause.message : `Could not replace the ${kind}.`)
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  return <Dialog isOpen title={`Replace ${kind} for ${user.handle}`} onClose={() => { if (!saving) onClose() }}
+    isCloseButtonShown={!saving} canEscapeKeyClose={!saving} canOutsideClickClose={!saving}>
+    <form onSubmit={event => { event.preventDefault(); void submit() }}>
+      <DialogBody>
+        <FormGroup label="Image file" labelFor="admin-profile-image"
+          helperText={avatar ? 'PNG up to 2 MB.' : 'PNG, JPEG, WebP, GIF, or AVIF up to 10 MB. The image is cropped to 3:1 from the center.'}>
+          <input id="admin-profile-image" type="file" accept={accept} disabled={saving}
+            onChange={event => {
+              const selected = event.currentTarget.files?.[0]
+              const tooLarge = selected && selected.size > maxMiB * 1024 * 1024
+              setFile(tooLarge ? undefined : selected)
+              setError(tooLarge ? `Choose an image up to ${maxMiB} MB.` : '')
+            }} />
+        </FormGroup>
+        {error && <Callout intent="danger" role="alert">{error}</Callout>}
+      </DialogBody>
+      <DialogFooter actions={<>
+        <Button disabled={saving} onClick={onClose}>Cancel</Button>
+        <Button type="submit" intent="primary" loading={saving} disabled={!file || saving}>Replace {kind}</Button>
+      </>} />
+    </form>
+  </Dialog>
 }
 
 export function BulkProfileActionDialog({ action, ids, onSaved, onClose, onAccessLost }: {

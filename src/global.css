@@ -313,3 +313,25 @@ html {
   mask-repeat: no-repeat;
   mask-size: contain;
 }
+
+.admin-update-prompt {
+  position: fixed;
+  inset-block-start: 72px;
+  inset-inline: 12px;
+  z-index: 3;
+  display: flex;
+  justify-content: center;
+  pointer-events: none;
+}
+
+.admin-update-prompt > .bp6-callout {
+  width: auto;
+  pointer-events: auto;
+}
+
+.admin-update-content {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
