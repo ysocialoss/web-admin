@@ -106,9 +106,18 @@ const post = z.object({
   imageIds: z.array(z.uuid()).default([]),
   voiceUrl: z.string().startsWith('/api/voices/').nullable().default(null),
   hasPoll: z.boolean().default(false),
+  hiddenAt: z.iso.datetime().nullable().default(null),
 })
 export type AdminPostGif = z.infer<typeof post>['gif']
-export const postList = z.object({ posts: z.array(post), hasNextPage: z.boolean(), canModerate: z.boolean().default(false) })
+export const postList = z.object({
+  posts: z.array(post), hasNextPage: z.boolean(), canModerate: z.boolean().default(false), canSetVisibility: z.boolean().default(false),
+})
+
+export async function setPostVisibility(id: string, hidden: boolean) {
+  await adminRequest('/api/admin/posts/' + id + '/visibility', undefined, {
+    method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ hidden }),
+  })
+}
 export const imageFlagPage = z.object({
   flags: z.array(z.object({
     id: z.uuid(),
@@ -151,6 +160,7 @@ export const targetSchema = z.discriminatedUnion('kind', [
     kind: z.literal('post'),
     type: z.enum(['Post', 'Reply']),
     canRemove: z.boolean(),
+    canSetVisibility: z.boolean().default(false),
     parentId: z.uuid().nullable(),
     quotedPostId: z.uuid().nullable(),
     pollTitle: z.string().nullable(),
@@ -168,6 +178,7 @@ export class AdminRoleRequiredError extends Error {
 }
 
 const requestErrors = new Map([
+  ['independent_post_report_required', 'Open a report filed by another account to remove this post.'],
   ['invalid_post_image', 'Choose a static JPEG, PNG, or WebP image.'],
   ['post_image_limit', 'A post can have at most four images.'],
   ['post_image_busy', 'Image uploads are busy. Try again shortly.'],
@@ -304,7 +315,7 @@ export const reportDetail = reportRow.extend({
     owner: z.object({ id: z.uuid(), handle: z.string(), role: roles, bannedAt: z.string().nullable(), banReason: z.string().nullable() }).nullable(),
     ownerReports: z.object({ total: z.number(), actioned: z.number() }),
   }),
-  canResolve: z.boolean(), canAct: z.boolean(), canBan: z.boolean(),
+  canResolve: z.boolean(), canAct: z.boolean(), canBan: z.boolean(), canRemoveContent: z.boolean().default(false),
 })
 export type ReportDetail = z.infer<typeof reportDetail>
 export type ReportResolution = {
