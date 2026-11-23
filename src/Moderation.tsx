@@ -7,7 +7,9 @@ import { Alert, Button, Callout, Card, Classes, H1, H4, NonIdealState, PopoverNe
 import { AccountActionDialog, UserActionDialog, UserActions } from './UserActions'
 import { UserBadgesDialog } from './UserBadgesDialog'
 import UserPosts from './UserPosts'
-import { PostGif, PostImage, PostVoice } from './PostPreview'
+import { PostGif, PostVoice } from './PostPreview'
+import PostImageAttachments from './PostImageAttachments'
+import PostTextEditor from './PostTextEditor'
 
 export type ModerationTarget = { kind: 'user' | 'post'; id: string }
 
@@ -26,6 +28,7 @@ export default function Moderation({ onAccessLost, pathname, onNavigate, onOpenP
   const [profileAction, setProfileAction] = useState<ProfileChange['action'] | null>(null)
   const [accountAction, setAccountAction] = useState<AccountAction | null>(null)
   const [badgeUserId, setBadgeUserId] = useState<string | null>(null)
+  const [editingPostId, setEditingPostId] = useState<string | null>(null)
   const [confirmRemoval, setConfirmRemoval] = useState<'post' | 'images' | null>(null)
   const [removing, setRemoving] = useState(false)
   const [actionError, setActionError] = useState('')
@@ -102,8 +105,13 @@ export default function Moderation({ onAccessLost, pathname, onNavigate, onOpenP
             <Text className={Classes.TEXT_MUTED}><time dateTime={target.time}>{new Date(target.time).toLocaleString()}</time></Text>
           </div>
           {target.content && <Text className="overview-details">{target.content}</Text>}
+          {target.canRemove && <Button variant="minimal" icon="edit" onClick={() => setEditingPostId(target.id)}>Edit text</Button>}
           {target.gif && <PostGif gif={target.gif} />}
-          {target.imageIds.map((id, index) => <PostImage key={id} url={`/api/admin/post-images/${id}`} alt={`Attached image ${index + 1}`} />)}
+          <PostImageAttachments key={target.id} postId={target.id} imageIds={target.imageIds} canEdit={target.canRemove}
+            onAccessLost={onAccessLost} onSaved={message => {
+              setNotice(message)
+              setRevision(value => value + 1)
+            }} />
           {target.canRemove && target.imageIds.length > 0 &&
             <Button variant="minimal" intent="danger" icon="eraser" onClick={() => setConfirmRemoval('images')}>Remove images</Button>}
           {target.voiceUrl && <PostVoice url={target.voiceUrl} />}
@@ -115,6 +123,13 @@ export default function Moderation({ onAccessLost, pathname, onNavigate, onOpenP
         </>}
       </Card>
       {target?.kind === 'user' && <UserPosts userId={target.id} onAccessLost={onAccessLost} onOpenPost={onOpenProfilePost} />}
+      {target?.kind === 'post' && target.canRemove && target.id === editingPostId &&
+        <PostTextEditor key={target.id} postId={target.id} content={target.content}
+          onAccessLost={onAccessLost} onClose={() => setEditingPostId(null)} onSaved={() => {
+            setEditingPostId(null)
+            setRevision(value => value + 1)
+            setNotice('Post text updated.')
+          }} />}
       {target?.kind === 'user' && target.canEditBadges && target.id === badgeUserId &&
         <UserBadgesDialog key={target.id} user={target} onClose={() => setBadgeUserId(null)} onAccessLost={onAccessLost}
           onSaved={badges => {

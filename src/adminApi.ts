@@ -164,18 +164,28 @@ export class AdminRoleRequiredError extends Error {
   }
 }
 
+const requestErrors = new Map([
+  ['invalid_post_image', 'Choose a static JPEG, PNG, or WebP image.'],
+  ['post_image_limit', 'A post can have at most four images.'],
+  ['post_image_busy', 'Image uploads are busy. Try again shortly.'],
+  ['post_image_rejected', 'The image did not pass the NSFW check.'],
+  ['post_image_check_unavailable', 'The NSFW check is unavailable. Try again shortly.'],
+  ['invalid_content', 'Use up to 2,000 characters and no more than two blank lines in a row. A post without attachments needs text.'],
+])
+
 export async function adminRequest(path: string, signal?: AbortSignal, options?: RequestInit): Promise<unknown> {
   const response = await fetch(path, { ...options, credentials: 'same-origin', signal, cache: 'no-store' })
   if (!response.ok) {
     if (response.status === 401) throw new AdminAccessError('Your session expired. Sign in again.')
+    const error = z.object({ error: z.string() }).safeParse(await response.json().catch(() => null))
+    const message = requestErrors.get(error.data?.error ?? '')
+    if (message) throw new Error(message)
     if (response.status === 403) {
-      const error = z.object({ error: z.string() }).safeParse(await response.json().catch(() => null))
       if (error.data?.error === 'admin_required') throw new AdminRoleRequiredError()
       if (error.data?.error === 'invalid_origin') throw new Error('The dashboard origin is not configured for moderation actions.')
       throw new AdminAccessError('You do not have permission to access the admin dashboard.')
     }
     if (response.status === 409) {
-      const error = z.object({ error: z.string() }).safeParse(await response.json().catch(() => null))
       if (error.data?.error === 'reserved_username') throw new Error('This username is reserved.')
       if (error.data?.error === 'protected_account') throw new Error('This account is protected.')
       if (error.data?.error === 'account_banned') throw new Error('Unban this account before approving it.')
