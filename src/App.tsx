@@ -23,6 +23,7 @@ import Users from './Users'
 import Moderation from './Moderation'
 import ContentReview from './ContentReview'
 import Activity from './Activity'
+import System from './System'
 import Flags from './Flags'
 import Reports from './Reports'
 import Waitlist from './Waitlist'
@@ -36,6 +37,7 @@ const sections = [
   { id: 'users', title: 'Users', icon: 'people', path: '/users' },
   { id: 'waitlist', title: 'Waitlist', icon: 'time', path: '/waitlist' },
   { id: 'activity', title: 'Activity history', icon: 'history', path: '/activity' },
+  { id: 'system', title: 'System status', icon: 'pulse', path: '/system' },
 ] satisfies { id: string; title: string; icon: IconName; path: string }[]
 
 function ConnectedApp({ onSignOut, onAccessLost, signingOut }: { onSignOut: () => void; onAccessLost: () => void; signingOut: boolean }) {
@@ -191,13 +193,14 @@ function ConnectedApp({ onSignOut, onAccessLost, signingOut }: { onSignOut: () =
                 <header className="overview-heading"><h1 className={Classes.HEADING}>Overview</h1></header>
                 <Card><p role="alert">{overview.error}</p><Button onClick={overview.refresh}>Retry</Button></Card>
               </section>
-            : <Overview data={overview.data} onOpenModeration={openResult} onNavigate={navigate} onRefresh={overview.refresh} />)}
+            : <Overview data={overview.data} onOpenModeration={openResult} onNavigate={navigate} onRefresh={overview.refresh} onAccessLost={onAccessLost} />)}
         {activeSection.id === 'users' && <Users onAccessLost={onAccessLost} onOpenUser={id => navigate('/moderation/user/' + id)} />}
         {activeSection.id === 'waitlist' && <Waitlist onAccessLost={onAccessLost} onOpenUser={id => navigate('/moderation/user/' + id)} />}
         {activeSection.id === 'reports' && <Reports pathname={pathname} onNavigate={navigate} onAccessLost={onAccessLost}
           onChanged={() => setReportRevision(value => value + 1)}
           onOpenUser={id => navigate('/moderation/user/' + id, true)} onOpenPost={id => navigate('/moderation/post/' + id, true)} />}
         {activeSection.id === 'flags' && <Flags onAccessLost={onAccessLost} onOpenUser={id => navigate('/moderation/user/' + id)} />}
+        {activeSection.id === 'system' && <System onAccessLost={onAccessLost} />}
         {activeSection.id === 'activity' && <Activity onAccessLost={onAccessLost}
           onOpenUser={id => navigate('/moderation/user/' + id)} onOpenPost={id => navigate('/moderation/post/' + id)} />}
         {activeSection.id === 'moderation' && (isDetail
