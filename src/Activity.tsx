@@ -23,6 +23,8 @@ const actionLabels: Record<string, string> = {
   clearBio: 'Cleared bio',
   clearAvatar: 'Cleared avatar',
   clearBanner: 'Cleared banner',
+  replaceAvatar: 'Replaced avatar',
+  replaceBanner: 'Replaced banner',
   changeUsername: 'Changed username',
   changeName: 'Changed display name',
   changeBio: 'Changed bio',
