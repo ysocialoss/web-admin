@@ -99,7 +99,10 @@ export async function updateUserRoles(ids: string[], role: ManagedUser['role']) 
 const post = z.object({
   id: z.uuid(), authorId: z.uuid(), author: z.string(), content: z.string(),
   kind: z.enum(['Post', 'Reply']), time: z.string(),
-  gif: z.object({ url: z.url({ protocol: /^https?$/ }), title: z.string() }).nullable().default(null),
+  gif: z.object({
+    url: z.url({ protocol: /^https?$/ }).or(z.literal('/easter-egg.gif')),
+    title: z.string(),
+  }).nullable().default(null),
   imageIds: z.array(z.uuid()).default([]),
   voiceUrl: z.string().startsWith('/api/voices/').nullable().default(null),
   hasPoll: z.boolean().default(false),
