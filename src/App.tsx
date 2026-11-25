@@ -27,6 +27,7 @@ import System from './System'
 import Flags from './Flags'
 import Reports from './Reports'
 import Waitlist from './Waitlist'
+import Changelog from './Changelog'
 import type { ModerationTarget } from './Moderation'
 
 const sections = [
@@ -36,6 +37,7 @@ const sections = [
   { id: 'flags', title: 'Flags', icon: 'flag', path: '/flags' },
   { id: 'users', title: 'Users', icon: 'people', path: '/users' },
   { id: 'waitlist', title: 'Waitlist', icon: 'time', path: '/waitlist' },
+  { id: 'changelog', title: 'Changelog', icon: 'git-commit', path: '/changelog' },
   { id: 'activity', title: 'Activity history', icon: 'history', path: '/activity' },
   { id: 'system', title: 'System status', icon: 'pulse', path: '/system' },
 ] satisfies { id: string; title: string; icon: IconName; path: string }[]
@@ -201,6 +203,7 @@ function ConnectedApp({ onSignOut, onAccessLost, signingOut }: { onSignOut: () =
           onOpenUser={id => navigate('/moderation/user/' + id, true)} onOpenPost={id => navigate('/moderation/post/' + id, true)} />}
         {activeSection.id === 'flags' && <Flags onAccessLost={onAccessLost} onOpenUser={id => navigate('/moderation/user/' + id)} />}
         {activeSection.id === 'system' && <System onAccessLost={onAccessLost} />}
+        {activeSection.id === 'changelog' && <Changelog onAccessLost={onAccessLost} />}
         {activeSection.id === 'activity' && <Activity onAccessLost={onAccessLost}
           onOpenUser={id => navigate('/moderation/user/' + id)} onOpenPost={id => navigate('/moderation/post/' + id)} />}
         {activeSection.id === 'moderation' && (isDetail
