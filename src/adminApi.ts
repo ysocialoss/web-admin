@@ -215,7 +215,11 @@ const requestErrors = new Map([
   ['post_image_busy', 'Image uploads are busy. Try again shortly.'],
   ['post_image_rejected', 'The image did not pass the NSFW check.'],
   ['post_image_check_unavailable', 'The NSFW check is unavailable. Try again shortly.'],
-  ['invalid_content', 'Use up to 2,000 characters and no more than two blank lines in a row. A post without attachments needs text.'],
+  ['release_exists', 'A release with this tag already exists for this app.'],
+  ['release_empty', 'This app has no unreleased entries to release.'],
+  ['changelog_entry_released', 'This entry was already released and can no longer change.'],
+  ['invalid_release', 'Enter a release tag of up to 128 characters.'],
+  ['invalid_content','Use up to 2,000 characters and no more than two blank lines in a row. A post without attachments needs text.'],
 ])
 
 export async function adminRequest(path: string, signal?: AbortSignal, options?: RequestInit): Promise<unknown> {
