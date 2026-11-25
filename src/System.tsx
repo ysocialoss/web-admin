@@ -57,7 +57,7 @@ function SystemBody({ data }: { data: SystemStatus }) {
   const overall = overallStatus(data.services)
   const { runtime, host } = { runtime: data.runtime, host: data.runtime.host }
   const memoryUsed = host.memoryTotal - host.memoryFree
-  const { database, queues, community, moderation } = data
+  const { database, queues, community, moderation, feed } = data
   return <>
     <Callout intent={overall.intent} icon={overall.intent === 'success' ? 'tick-circle' : 'warning-sign'} className="admin-overall">
       <strong>{overall.text}</strong>
@@ -165,6 +165,24 @@ function SystemBody({ data }: { data: SystemStatus }) {
           </> : <Unavailable />}
         </div>
       </Card>
+
+      {feed && <Card className="admin-panel">
+        <header className="admin-toolbar"><H2>Feed data</H2></header>
+        <div className="admin-panel-body">
+          {available(feed) ? <>
+            <Facts items={[
+              ['Events recorded', `${feed.events.toLocaleString()} (${feed.events24h.toLocaleString()} in 24 hours)`],
+              ['Tracked readers this week', feed.trackedUsers7d],
+              ['Personalization off', feed.personalizationOff],
+            ]} />
+            <div className="admin-chart-row">
+              <BarChart data={feed.eventsByDay} label="Feed events, 14 days" unit="events" />
+            </div>
+            {feed.byType24h.length > 0 && <div className="admin-tag-row">{feed.byType24h.map(item =>
+              <Tag key={item.type} minimal>{item.type.replaceAll('_', ' ')} · {item.count}</Tag>)}</div>}
+          </> : <Unavailable />}
+        </div>
+      </Card>}
 
       {available(database) && <Card className="admin-panel admin-system-wide">
         <header className="admin-toolbar"><H2>Largest tables</H2></header>
