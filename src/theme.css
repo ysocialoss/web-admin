@@ -1,0 +1,322 @@
+/*
+ * Neutral theme for Blueprint. Loaded after Blueprint's CSS: it swaps the blue-tinted grays for
+ * true neutrals, makes "primary" near-black (near-white in dark mode), and softens radii and
+ * shadows. Status colors (success, warning, danger) stay colored.
+ */
+
+:root {
+  /* Neutral grays, same slots as Blueprint's palette so every component picks them up. */
+  --bp-palette-black: #0a0a0a;
+  --bp-palette-dark-gray-1: #111111;
+  --bp-palette-dark-gray-2: #171717;
+  --bp-palette-dark-gray-3: #1f1f1f;
+  --bp-palette-dark-gray-4: #2a2a2a;
+  --bp-palette-dark-gray-5: #383838;
+  --bp-palette-gray-1: #5c5c5c;
+  --bp-palette-gray-2: #737373;
+  --bp-palette-gray-3: #8a8a8a;
+  --bp-palette-gray-4: #a3a3a3;
+  --bp-palette-gray-5: #c4c4c4;
+  --bp-palette-light-gray-1: #d4d4d4;
+  --bp-palette-light-gray-2: #e5e5e5;
+  --bp-palette-light-gray-3: #ebebeb;
+  --bp-palette-light-gray-4: #f0f0f0;
+  --bp-palette-light-gray-5: #f7f7f7;
+
+  --bp-intent-primary-rest: #171717;
+  --bp-intent-primary-hover: #2e2e2e;
+  --bp-intent-primary-active: #000000;
+  --bp-intent-primary-disabled: #a3a3a3;
+  --bp-intent-primary-foreground: #ffffff;
+
+  --bp-intent-success-rest: #15803d;
+  --bp-intent-success-hover: #166534;
+  --bp-intent-success-active: #14532d;
+  --bp-intent-danger-rest: #dc2626;
+  --bp-intent-danger-hover: #b91c1c;
+  --bp-intent-danger-active: #991b1b;
+  --bp-intent-warning-rest: #f59e0b;
+  --bp-intent-warning-hover: #d97706;
+  --bp-intent-warning-active: #b45309;
+
+  --bp-surface-background-color-default-rest: #ffffff;
+  --bp-surface-background-color-default-hover: #f5f5f5;
+  --bp-surface-background-color-default-active: #ebebeb;
+  --bp-surface-background-color-default-disabled: #fafafa;
+  --bp-surface-border-color-default: rgb(0 0 0 / 0.08);
+  --bp-surface-border-color-strong: rgb(0 0 0 / 0.14);
+  --bp-surface-border-radius: 8px;
+  --bp-surface-shadow-0: 0 0 0 1px rgb(0 0 0 / 0.08);
+  --bp-surface-shadow-1: 0 0 0 1px rgb(0 0 0 / 0.07), 0 1px 2px rgb(0 0 0 / 0.05);
+  --bp-surface-shadow-2: 0 0 0 1px rgb(0 0 0 / 0.07), 0 4px 12px -2px rgb(0 0 0 / 0.08);
+  --bp-surface-shadow-3: 0 0 0 1px rgb(0 0 0 / 0.07), 0 12px 32px -8px rgb(0 0 0 / 0.16);
+  --bp-surface-shadow-4: 0 0 0 1px rgb(0 0 0 / 0.07), 0 24px 48px -12px rgb(0 0 0 / 0.25);
+
+  --bp-typography-family-default: 'Inter Variable', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  --bp-typography-weight-bold: 600;
+  --bp-typography-line-height-default: 1.4;
+  --bp-typography-color-default-rest: #171717;
+  --bp-typography-color-default-hover: #0a0a0a;
+  --bp-typography-color-muted: #5c5c5c;
+  --bp-typography-color-primary-rest: #171717;
+  --bp-typography-color-primary-hover: #0a0a0a;
+  --bp-typography-color-primary-active: #000000;
+
+  --bp-emphasis-focus-color: #a3a3a3;
+  --bp-emphasis-transition-duration: 120ms;
+
+  /* Shared by the app's own CSS. */
+  --app-border: #e5e5e5;
+  /* Literal values: a var() here would resolve once at :root and ignore dark mode. */
+  --app-accent: #171717;
+  --app-chart: #737373;
+}
+
+.bp6-dark,
+[data-bp-color-scheme='dark'] {
+  --bp-intent-primary-rest: #f5f5f5;
+  --bp-intent-primary-hover: #e5e5e5;
+  --bp-intent-primary-active: #d4d4d4;
+  --bp-intent-primary-disabled: #525252;
+  --bp-intent-primary-foreground: #0a0a0a;
+
+  --bp-surface-background-color-default-rest: #171717;
+  --bp-surface-background-color-default-hover: #1f1f1f;
+  --bp-surface-background-color-default-active: #2a2a2a;
+  --bp-surface-background-color-default-disabled: #171717;
+  --bp-surface-border-color-default: rgb(255 255 255 / 0.08);
+  --bp-surface-border-color-strong: rgb(255 255 255 / 0.14);
+  --bp-surface-shadow-0: inset 0 0 0 1px rgb(255 255 255 / 0.08);
+  --bp-surface-shadow-1: inset 0 0 0 1px rgb(255 255 255 / 0.08), 0 1px 2px rgb(0 0 0 / 0.4);
+  --bp-surface-shadow-2: inset 0 0 0 1px rgb(255 255 255 / 0.08), 0 4px 12px -2px rgb(0 0 0 / 0.5);
+  --bp-surface-shadow-3: inset 0 0 0 1px rgb(255 255 255 / 0.08), 0 12px 32px -8px rgb(0 0 0 / 0.6);
+  --bp-surface-shadow-4: inset 0 0 0 1px rgb(255 255 255 / 0.08), 0 24px 48px -12px rgb(0 0 0 / 0.7);
+
+  --bp-typography-color-default-rest: #fafafa;
+  --bp-typography-color-default-hover: #ffffff;
+  --bp-typography-color-muted: #a3a3a3;
+  --bp-typography-color-primary-rest: #fafafa;
+  --bp-typography-color-primary-hover: #ffffff;
+  --bp-typography-color-primary-active: #e5e5e5;
+
+  --bp-emphasis-focus-color: #737373;
+
+  --app-border: #262626;
+  --app-accent: #f5f5f5;
+  --app-chart: #8a8a8a;
+}
+
+body {
+  font-family: var(--bp-typography-family-default);
+  font-feature-settings: 'cv11', 'ss01';
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Text colors Blueprint hardcodes instead of reading from tokens. */
+.bp6-heading,
+.bp6-menu,
+.bp6-menu-header > h6,
+.bp6-dark .bp6-heading,
+.bp6-dark .bp6-menu,
+.bp6-dark .bp6-menu-header > h6,
+.bp6-dark .bp6-control {
+  color: var(--bp-typography-color-default-rest);
+}
+
+.bp6-text-muted,
+.bp6-dark .bp6-text-muted,
+.bp6-menu-item .bp6-menu-item-label,
+.bp6-menu-item .bp6-menu-item-icon,
+.bp6-menu-item .bp6-menu-item-selected-icon,
+.bp6-dark .bp6-menu-item .bp6-menu-item-label,
+.bp6-dark .bp6-menu-item .bp6-menu-item-icon,
+.bp6-dark .bp6-menu-item .bp6-menu-item-selected-icon,
+.bp6-dialog-header .bp6-icon:not([class*='bp6-intent']),
+.bp6-dark .bp6-dialog-header .bp6-icon:not([class*='bp6-intent']),
+.bp6-select .bp6-icon,
+.bp6-dark .bp6-select .bp6-icon {
+  color: var(--bp-typography-color-muted);
+}
+
+.bp6-heading {
+  letter-spacing: -0.01em;
+}
+
+h1.bp6-heading {
+  font-weight: 650;
+  letter-spacing: -0.02em;
+}
+
+/* Buttons: flat, hairline border, no gradient sheen. */
+.bp6-button:not([class*='bp6-intent-']):not(.bp6-minimal):not(.bp6-variant-minimal) {
+  background-color: var(--bp-surface-background-color-default-rest);
+  box-shadow: inset 0 0 0 1px var(--bp-surface-border-color-strong), 0 1px 2px rgb(0 0 0 / 0.04);
+  color: var(--bp-typography-color-default-rest);
+}
+
+.bp6-button:not([class*='bp6-intent-']):not(.bp6-minimal):not(.bp6-variant-minimal):hover {
+  background-color: var(--bp-surface-background-color-default-hover);
+}
+
+.bp6-button:not([class*='bp6-intent-']):not(.bp6-minimal):not(.bp6-variant-minimal):active,
+.bp6-button:not([class*='bp6-intent-']):not(.bp6-minimal):not(.bp6-variant-minimal).bp6-active {
+  background-color: var(--bp-surface-background-color-default-active);
+}
+
+.bp6-button {
+  font-weight: 500;
+}
+
+.bp6-button .bp6-icon {
+  color: inherit;
+}
+
+/* Inputs: solid fill, hairline border, neutral focus ring. */
+.bp6-input,
+.bp6-dark .bp6-input {
+  background: var(--bp-surface-background-color-default-rest);
+  box-shadow: inset 0 0 0 1px var(--bp-surface-border-color-strong);
+  transition: box-shadow var(--bp-emphasis-transition-duration) ease;
+}
+
+.bp6-input:focus,
+.bp6-input.bp6-active,
+.bp6-dark .bp6-input:focus,
+.bp6-dark .bp6-input.bp6-active {
+  box-shadow: inset 0 0 0 1px var(--bp-palette-gray-3), 0 0 0 3px color-mix(in srgb, var(--bp-palette-gray-3) 25%, transparent);
+}
+
+.bp6-input::placeholder {
+  color: var(--bp-palette-gray-3);
+}
+
+/* Surfaces */
+.bp6-dialog,
+.bp6-dark .bp6-dialog,
+.bp6-dialog.bp6-dark {
+  border-radius: 12px;
+  background: var(--bp-surface-background-color-default-rest);
+  box-shadow: var(--bp-surface-shadow-4);
+}
+
+.bp6-dialog-header,
+.bp6-dark .bp6-dialog-header {
+  min-height: 48px;
+  border-radius: 12px 12px 0 0;
+  background: transparent;
+  box-shadow: 0 1px 0 var(--bp-surface-border-color-default);
+}
+
+.bp6-dialog-header .bp6-heading {
+  font-size: 15px;
+}
+
+.bp6-dialog-footer-fixed,
+.bp6-dark .bp6-dialog-footer-fixed {
+  border-radius: 0 0 12px 12px;
+  background: transparent;
+  box-shadow: 0 -1px 0 var(--bp-surface-border-color-default);
+}
+
+.bp6-overlay-backdrop {
+  background-color: rgb(0 0 0 / 0.45);
+}
+
+.bp6-popover,
+.bp6-dark .bp6-popover {
+  border-radius: 10px;
+  box-shadow: var(--bp-surface-shadow-3);
+}
+
+.bp6-popover .bp6-popover-content,
+.bp6-dark .bp6-popover .bp6-popover-content,
+.bp6-menu,
+.bp6-dark .bp6-menu {
+  border-radius: 10px;
+  background: var(--bp-surface-background-color-default-rest);
+}
+
+.bp6-menu-item {
+  border-radius: 6px;
+}
+
+.bp6-menu-divider,
+.bp6-dark .bp6-menu-divider {
+  border-color: var(--bp-surface-border-color-default);
+}
+
+.bp6-menu-header > h6 {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--bp-typography-color-muted);
+}
+
+.bp6-navbar,
+.bp6-dark .bp6-navbar,
+.bp6-navbar.bp6-dark {
+  background-color: var(--bp-surface-background-color-default-rest);
+  box-shadow: 0 1px 0 var(--app-border);
+}
+
+.bp6-card {
+  border-radius: 10px;
+}
+
+.bp6-tag {
+  border-radius: 6px;
+  font-weight: 500;
+}
+
+.bp6-callout {
+  border-radius: 10px;
+}
+
+.bp6-tab-indicator-wrapper .bp6-tab-indicator {
+  height: 2px;
+  border-radius: 2px;
+}
+
+/* Places Blueprint reaches for blue directly instead of the primary intent. */
+.bp6-menu-item.bp6-active,
+.bp6-dark .bp6-menu-item.bp6-active {
+  background-color: var(--bp-surface-background-color-default-active);
+  color: var(--bp-typography-color-default-rest);
+}
+
+.bp6-menu-item.bp6-active::before,
+.bp6-menu-item.bp6-active .bp6-menu-item-icon,
+.bp6-menu-item.bp6-active .bp6-menu-item-selected-icon,
+.bp6-menu-item.bp6-active .bp6-submenu-icon,
+.bp6-dark .bp6-menu-item.bp6-active::before,
+.bp6-dark .bp6-menu-item.bp6-active .bp6-menu-item-icon,
+.bp6-dark .bp6-menu-item.bp6-active .bp6-menu-item-selected-icon,
+.bp6-dark .bp6-menu-item.bp6-active .bp6-submenu-icon {
+  color: inherit;
+}
+
+a,
+a:hover,
+.bp6-dark a,
+.bp6-dark a:hover {
+  color: var(--bp-typography-color-primary-rest);
+}
+
+a:not(.bp6-menu-item):not(.bp6-button) {
+  text-decoration: underline;
+  text-decoration-color: color-mix(in srgb, currentColor 35%, transparent);
+  text-underline-offset: 3px;
+}
+
+:focus,
+.bp6-dark :focus,
+.bp6-control input:focus ~ .bp6-control-indicator,
+.bp6-dark .bp6-control input:focus ~ .bp6-control-indicator,
+.bp6-tag:focus,
+.bp6-dark .bp6-tag:focus {
+  outline-color: var(--bp-emphasis-focus-color);
+}
+
+/* Blueprint caps select menus at 300px, which hid the end of longer action menus. */
+.bp6-select-popover .bp6-menu {
+  max-height: min(70vh, 560px);
+}
