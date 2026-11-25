@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
-import { Button, Callout, Card, Classes, FormGroup, H1, H3, HTMLSelect, HTMLTable, InputGroup, NonIdealState, Tag, TextArea } from '@blueprintjs/core'
+import { Button, Callout, Card, Classes, Dialog, DialogBody, DialogFooter, FormGroup, H1, H3, HTMLSelect, HTMLTable, InputGroup, NonIdealState, Tag, TextArea } from '@blueprintjs/core'
 import { z } from 'zod'
-import { AdminAccessError, adminRequest } from './adminApi'
+import { AdminAccessError, AdminRoleRequiredError, adminRequest } from './adminApi'
 import { LoadingRows } from './LoadingState'
 
 const apps = ['web', 'api', 'web-admin', 'android', 'mobile'] as const
@@ -35,6 +35,7 @@ export default function Changelog({ onAccessLost }: { onAccessLost: () => void }
   const [editing, setEditing] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
   const [saveError, setSaveError] = useState('')
+  const [releasing, setReleasing] = useState(false)
 
   useEffect(() => {
     const controller = new AbortController()
@@ -108,7 +109,10 @@ export default function Changelog({ onAccessLost }: { onAccessLost: () => void }
       {error && <Card><p role="alert">{error}</p><Button onClick={() => setRevision(value => value + 1)}>Retry</Button></Card>}
       {!data && !error && <LoadingRows />}
       {data && <>
-        <H3>Unreleased</H3>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <H3>Unreleased</H3>
+          <Button icon="send-to" disabled={data.unreleased.length === 0} onClick={() => setReleasing(true)}>Release now…</Button>
+        </div>
         {data.unreleased.length === 0
           ? <NonIdealState icon="clean" title="Nothing waiting for the next release" />
           : <EntryTable entries={data.unreleased} onEdit={edit} onRemove={remove} disabled={saving} />}
@@ -117,6 +121,9 @@ export default function Changelog({ onAccessLost }: { onAccessLost: () => void }
           ? <NonIdealState icon="history" title="No releases yet" />
           : <EntryTable entries={data.released} />}
       </>}
+      {releasing && data && <ReleaseDialog unreleased={data.unreleased} onAccessLost={onAccessLost}
+        onClose={() => setReleasing(false)}
+        onReleased={() => { setReleasing(false); setRevision(value => value + 1) }} />}
     </section>
   )
 }
@@ -147,5 +154,57 @@ function EntryTable({ entries, onEdit, onRemove, disabled }: {
         ))}
       </tbody>
     </HTMLTable>
+  )
+}
+
+const defaultTag = () => 'manual-' + new Date().toISOString().slice(0, 16).replace(/[-:]/g, '').replace('T', '-')
+
+// Same call promote makes, for releasing by hand (hotfixes, or entries that missed a deploy).
+function ReleaseDialog({ unreleased, onClose, onReleased, onAccessLost }: {
+  unreleased: Entry[]
+  onClose: () => void
+  onReleased: () => void
+  onAccessLost: () => void
+}) {
+  const pending = apps.filter(app => unreleased.some(item => item.app === app))
+  const [app, setApp] = useState<Draft['app']>(pending[0] ?? 'web')
+  const [tag, setTag] = useState(defaultTag)
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState('')
+  const shipping = unreleased.filter(item => item.app === app)
+
+  async function release() {
+    setBusy(true)
+    setError('')
+    try {
+      await send('/api/admin/changelog/releases', 'POST', { app, tag: tag.trim() })
+      onReleased()
+    } catch (cause) {
+      if (cause instanceof AdminAccessError) onAccessLost()
+      else if (cause instanceof AdminRoleRequiredError) setError('Only admins can release.')
+      else setError(cause instanceof Error ? cause.message : 'Could not create the release.')
+      setBusy(false)
+    }
+  }
+
+  return (
+    <Dialog isOpen title="Release changelog entries" icon="send-to" onClose={busy ? undefined : onClose}>
+      <DialogBody>
+        <p>Publishes every unreleased entry for the app below. Normally promote does this when the app goes to production.</p>
+        <FormGroup label="App" inline>
+          <HTMLSelect value={app} options={pending} onChange={event => setApp(event.currentTarget.value as Draft['app'])} />
+        </FormGroup>
+        <FormGroup label="Release tag" labelFor="release-tag" helperText="Usually the image tag that is live, e.g. release-20261125-1030.">
+          <InputGroup id="release-tag" maxLength={128} value={tag} onChange={event => setTag(event.currentTarget.value)} />
+        </FormGroup>
+        <p className={Classes.TEXT_MUTED}>{shipping.length} {shipping.length === 1 ? 'entry' : 'entries'} will be released:</p>
+        <ul>{shipping.map(item => <li key={item.id}>{item.category}: {item.title}</li>)}</ul>
+        {error && <p role="alert" className={Classes.INTENT_DANGER}>{error}</p>}
+      </DialogBody>
+      <DialogFooter actions={<>
+        <Button disabled={busy} onClick={onClose}>Cancel</Button>
+        <Button intent="primary" loading={busy} disabled={!tag.trim() || shipping.length === 0} onClick={release}>Release</Button>
+      </>} />
+    </Dialog>
   )
 }
