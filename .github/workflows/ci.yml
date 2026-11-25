@@ -66,4 +66,4 @@ jobs:
             ${{ steps.name.outputs.image }}:${{ github.sha }}
             ${{ steps.name.outputs.image }}:${{ needs.tag.outputs.value || 'pr' }}
           cache-from: type=gha
-          cache-to: type=gha,mode=max
+          cache-to: type=gha,mode=max,ignore-error=true
