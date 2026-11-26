@@ -28,12 +28,12 @@ html {
   display: grid;
   grid-template-columns: 224px minmax(0, 1fr);
   min-height: calc(100dvh - 60px);
-  background: #f4f6f9;
+  background: var(--bp-palette-white);
 }
 
 .admin-sidebar {
-  background: #fff;
-  border-right: 1px solid #e1e7ef;
+  background: var(--bp-palette-light-gray-5);
+  border-right: 1px solid var(--bp-palette-light-gray-2);
   padding: 24px 12px;
 }
 
@@ -53,8 +53,8 @@ html {
 }
 
 .admin-sidebar .bp6-menu-item[aria-current="page"] {
-  background: #eef4fc;
-  color: #184f9b;
+  background: var(--bp-surface-background-color-default-active);
+  color: var(--bp-typography-color-default-rest);
   font-weight: 600;
 }
 
@@ -73,17 +73,17 @@ html {
 }
 
 .bp6-dark .admin-workspace {
-  background: #20262e;
+  background: var(--bp-palette-dark-gray-1);
 }
 
 .bp6-dark .admin-sidebar {
-  background: #252d38;
-  border-color: #394553;
+  background: var(--bp-palette-dark-gray-2);
+  border-color: var(--bp-palette-dark-gray-4);
 }
 
 .bp6-dark .admin-sidebar .bp6-menu-item[aria-current="page"] {
-  background: #2d3949;
-  color: #b6d5ff;
+  background: var(--bp-surface-background-color-default-active);
+  color: var(--bp-typography-color-default-rest);
 }
 
 .admin-main {
@@ -99,7 +99,7 @@ html {
   .admin-sidebar {
     padding: 8px;
     border-right: 0;
-    border-bottom: 1px solid #e1e7ef;
+    border-bottom: 1px solid var(--bp-palette-light-gray-2);
   }
 
   .admin-sidebar .bp6-menu {
@@ -206,10 +206,10 @@ html {
   max-height: 12rem;
   overflow-y: auto;
   overscroll-behavior: contain;
-  border-radius: 4px;
+  border-radius: 10px;
   padding: 4px;
   background: var(--bp-surface-background-color-default-rest);
-  box-shadow: 0 2px 8px #0004;
+  box-shadow: var(--bp-surface-shadow-3);
 }
 
 .admin-pronoun-suggestions [role="option"] {
