@@ -3,6 +3,8 @@ import { Alert, Button, Callout, Dialog, DialogBody, DialogFooter, FormGroup, HT
 import { AdminAccessError, moderateAccount, replaceUserProfileImage, updateUserProfile, updateUserProfiles } from './adminApi'
 import type { AccountAction, BulkProfileAction, ManagedUser, ProfileChange } from './adminApi'
 import { PronounsField } from './PronounsField'
+import { GroundFields } from './GroundDialog'
+import { emptyGround, groundReady, requestGround, type Ground } from './ground'
 
 type Action = ProfileChange['action']
 type ImageAction = 'replaceAvatar' | 'replaceBanner'
@@ -55,13 +57,14 @@ export function AccountActionDialog({ user, action, onClose, onSaved, onAccessLo
   const [error, setError] = useState('')
   const [preset, setPreset] = useState('')
   const [customReason, setCustomReason] = useState('')
+  const [ground, setGround] = useState<Ground>(emptyGround)
   const reason = preset === 'custom' ? customReason.trim() : preset
   const { label, description } = accountActions[action]
   async function submit() {
     setSaving(true)
     setError('')
     try {
-      await moderateAccount(user.id, action === 'ban' ? { action, reason } : { action })
+      await moderateAccount(user.id, action === 'ban' ? { action, reason, ground: { ...ground, facts: ground.facts.trim() } } : { action })
       onSaved()
     } catch (cause) {
       if (cause instanceof AdminAccessError) onAccessLost()
@@ -72,7 +75,7 @@ export function AccountActionDialog({ user, action, onClose, onSaved, onAccessLo
   }
   if (action === 'ban') return <Dialog isOpen title={`Ban ${user.handle}`} icon="ban-circle" onClose={() => { if (!saving) onClose() }}
     isCloseButtonShown={!saving} canEscapeKeyClose={!saving} canOutsideClickClose={!saving}>
-    <form onSubmit={event => { event.preventDefault(); if (reason && !saving) void submit() }}>
+    <form onSubmit={event => { event.preventDefault(); if (reason && groundReady(ground) && !saving) void submit() }}>
       <DialogBody>
         <p>{description}</p>
         <FormGroup label="Ban reason" labelFor="ban-reason">
@@ -83,11 +86,12 @@ export function AccountActionDialog({ user, action, onClose, onSaved, onAccessLo
           <TextArea id="ban-custom-reason" fill rows={4} maxLength={280} value={customReason} disabled={saving}
             onChange={event => setCustomReason(event.currentTarget.value)} />
         </FormGroup>}
+        <GroundFields value={ground} onChange={setGround} />
         {error && <Callout intent="danger" role="alert">{error}</Callout>}
       </DialogBody>
       <DialogFooter actions={<>
         <Button disabled={saving} onClick={onClose}>Cancel</Button>
-        <Button type="submit" intent="danger" loading={saving} disabled={!reason || saving}>Ban User</Button>
+        <Button type="submit" intent="danger" loading={saving} disabled={!reason || !groundReady(ground) || saving}>Ban User</Button>
       </>} />
     </form>
   </Dialog>
@@ -134,7 +138,9 @@ export function UserActionDialog({ user, action, onClose, onSaved, onAccessLost 
     onClose={onClose} onAccessLost={onAccessLost} onSave={async value => {
       const change = action === 'changeName' || action === 'changeBio' || action === 'changeUsername' || action === 'changePronouns'
         ? { action, value } : { action }
-      onSaved(await updateUserProfile(user.id, change))
+      const ground = action === 'changePronouns' ? undefined : await requestGround(`Why ${titles[action].toLowerCase()}?`)
+      if (action !== 'changePronouns' && !ground) throw new Error('A ground is required for this change.')
+      onSaved(await updateUserProfile(user.id, change, ground ?? undefined))
     }} />
 }
 

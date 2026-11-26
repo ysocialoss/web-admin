@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { Button, ButtonGroup, Callout, Dialog, DialogBody, DialogFooter, FormGroup } from '@blueprintjs/core'
 import { AdminAccessError, adminRequest } from './adminApi'
 import { PostImage } from './PostPreview'
+import { requestGround } from './ground'
 
 type ImageAction =
   | { kind: 'add' }
@@ -31,7 +32,11 @@ export default function PostImageAttachments({ postId, imageIds, canEdit, onAcce
 
   async function save() {
     if (!action || saving) return
-    const request = action.kind === 'remove' ? { method: 'DELETE' } : file && {
+    const ground = action.kind === 'remove' ? await requestGround('Why remove this image?') : null
+    if (action.kind === 'remove' && !ground) return
+    const request: RequestInit | null = action.kind === 'remove'
+      ? { method: 'DELETE', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ground }) }
+      : file && {
       method: 'POST',
       headers: {
         'Content-Type': 'application/octet-stream',

@@ -20,6 +20,7 @@ export default function Flags({ onAccessLost, onOpenUser }: {
   const [removing, setRemoving] = useState(false)
   const [removalError, setRemovalError] = useState('')
   const [notice, setNotice] = useState('')
+  const [suspected, setSuspected] = useState<FlagPage['flags'][number] | null>(null)
 
   useEffect(() => {
     const controller = new AbortController()
@@ -59,6 +60,23 @@ export default function Flags({ onAccessLost, onOpenUser }: {
     }
   }
 
+  async function markSuspected(flag: FlagPage['flags'][number]) {
+    setRemoving(true)
+    setRemovalError('')
+    try {
+      await adminRequest(`/api/admin/safety/flags/${flag.id}/suspected-csam`, undefined, { method: 'POST' })
+      setSuspected(null)
+      setRevealed(null)
+      setNotice('Image deleted, account suspended and incident recorded. Report it from Safety incidents.')
+      load(result?.flags.length === 1 && page > 1 ? page - 1 : page)
+    } catch (cause) {
+      if (cause instanceof AdminAccessError) onAccessLost()
+      else setRemovalError(cause instanceof Error ? cause.message : 'Could not record the incident.')
+    } finally {
+      setRemoving(false)
+    }
+  }
+
   return <section className="overview" aria-labelledby="flags-heading">
     <header className="overview-heading">
       <H1 id="flags-heading">Flags</H1>
@@ -91,7 +109,11 @@ export default function Flags({ onAccessLost, onOpenUser }: {
               {result.canRemove && <td><Button variant="minimal" intent="danger" icon="trash" onClick={() => {
                 setRemovalError('')
                 setRemoval(flag)
-              }}>Remove</Button></td>}
+              }}>Remove</Button>
+                <Button variant="minimal" intent="danger" icon="shield" onClick={() => {
+                  setRemovalError('')
+                  setSuspected(flag)
+                }}>Suspected CSAM</Button></td>}
             </tr>)}</tbody>
           </HTMLTable>
         </div> : <NonIdealState icon="flag" title="No flagged uploads" description="Image uploads rejected by NSFW screening appear here for seven days." />}
@@ -108,6 +130,14 @@ export default function Flags({ onAccessLost, onOpenUser }: {
       cancelButtonText="Cancel" confirmButtonText="Remove flag"
       onCancel={() => setRemoval(null)} onConfirm={() => void remove(removal)}>
       <p>Permanently remove the flag and image for {removal.filename ?? 'this upload'}?</p>
+      {removalError && <Callout intent="danger" role="alert">{removalError}</Callout>}
+    </Alert>}
+    {suspected && <Alert isOpen intent="danger" icon="shield" loading={removing}
+      cancelButtonText="Cancel" confirmButtonText="Delete image and record incident"
+      onCancel={() => setSuspected(null)} onConfirm={() => void markSuspected(suspected)}>
+      <p><strong>Do not download, screenshot or forward this image.</strong></p>
+      <p>This deletes the image immediately, keeps only its hash and metadata, suspends @{suspected.handle} and records a safety incident
+        for reporting to the BKA. Follow the CSAM procedure in the compliance repo.</p>
       {removalError && <Callout intent="danger" role="alert">{removalError}</Callout>}
     </Alert>}
   </section>

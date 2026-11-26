@@ -1,10 +1,11 @@
 import { useEffect, useState } from 'react'
 import { Alert, Button, ButtonGroup, Callout, Card, Classes, FormGroup, H1, HTMLSelect, HTMLTable, InputGroup, NonIdealState, SegmentedControl, Tag } from '@blueprintjs/core'
 import { z } from 'zod'
-import { AdminAccessError, adminRequest, postList, setPostVisibility } from './adminApi'
+import { AdminAccessError, adminRequest, postList, removeWithGround, setPostVisibility } from './adminApi'
 import { LoadingRows, LoadingStatus } from './LoadingState'
 import ContentMenu, { type ContentAction } from './ContentMenu'
 import PostPreview, { PostVoice } from './PostPreview'
+import { requestGround } from './ground'
 
 const authorFilter = z.string().trim().toLowerCase().regex(/^(?:@?[a-z0-9_]{3,32})?$/)
 const periodFilter = z.enum(['all', '1d', '7d', '30d']).catch('all')
@@ -130,8 +131,11 @@ export default function ContentReview({ type, onType, onOpenPost, onOpenUser, on
     setRemoving(true)
     setRemovalError('')
     try {
-      if (kind === 'visibility') await setPostVisibility(post.id, !post.hiddenAt)
-      else await adminRequest('/api/admin/posts/' + post.id + (kind === 'post' ? '' : '/attachments/' + kind), undefined, { method: 'DELETE' })
+      const ground = kind === 'visibility' && post.hiddenAt ? undefined
+        : await requestGround(kind === 'visibility' ? 'Why hide this?' : kind === 'post' ? 'Why delete this?' : 'Why remove this attachment?')
+      if (!ground && !(kind === 'visibility' && post.hiddenAt)) return
+      if (kind === 'visibility') await setPostVisibility(post.id, !post.hiddenAt, ground ?? undefined)
+      else await removeWithGround('/api/admin/posts/' + post.id + (kind === 'post' ? '' : '/attachments/' + kind), ground!)
       setChange(null)
       setFeedback({ intent: 'success', text: kind === 'visibility' ? post.kind + (post.hiddenAt ? ' unhidden.' : ' hidden.')
         : kind === 'post' ? post.kind + ' deleted.'
