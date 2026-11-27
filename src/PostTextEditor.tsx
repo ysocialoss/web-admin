@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { Button, Callout, Dialog, DialogBody, DialogFooter, FormGroup, TextArea } from '@blueprintjs/core'
 import { AdminAccessError, adminRequest } from './adminApi'
+import { requestGround } from './ground'
 
 export default function PostTextEditor({ postId, content, onClose, onAccessLost, onSaved }: {
   postId: string
@@ -17,13 +18,15 @@ export default function PostTextEditor({ postId, content, onClose, onAccessLost,
 
   async function save() {
     if (saving || text === content || length > 2000) return
+    const ground = await requestGround('Why edit this post?')
+    if (!ground) return
     setSaving(true)
     setError('')
     try {
       await adminRequest('/api/admin/posts/' + postId, undefined, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ content: text }),
+        body: JSON.stringify({ content: text, ground }),
       })
       onSaved()
     } catch (cause) {

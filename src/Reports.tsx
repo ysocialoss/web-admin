@@ -1,14 +1,16 @@
 import { useEffect, useState } from 'react'
 import {
   Button, ButtonGroup, Callout, Card, Checkbox, Classes, Dialog, DialogBody, DialogFooter, FormGroup, H1, H4,
-  HTMLSelect, HTMLTable, NonIdealState, SegmentedControl, Tag, Text, TextArea,
+  HTMLSelect, HTMLTable, InputGroup, NonIdealState, SegmentedControl, Tag, Text, TextArea,
 } from '@blueprintjs/core'
 import type { Intent } from '@blueprintjs/core'
 import {
-  AdminAccessError, adminRequest, reopenReport, reportDetail, reportPage, reportReasonLabels, reportReasons, resolveReport,
+  AdminAccessError, adminRequest, escalateReport, reopenReport, reportDetail, reportPage, reportReasonLabels, reportReasons, resolveReport,
 } from './adminApi'
 import type { ReportDetail, ReportResolution, ReportRow, ReportSnapshot } from './adminApi'
 import { LoadingRows, LoadingStatus } from './LoadingState'
+import { GroundFields } from './GroundDialog'
+import { emptyGround, groundReady, reasonClause, type Ground } from './ground'
 import { PostImage } from './PostPreview'
 import UserAvatar from './UserAvatar'
 import { pageUrl, useHistoryPage } from './useHistoryPage'
@@ -246,6 +248,7 @@ function ReportView({ id, onBack, onOpenReport, onOpenUser, onOpenPost, onAccess
 
   const current = state?.revision === revision ? state : undefined
   const report = current?.report
+  const [escalating, setEscalating] = useState(false)
 
   async function reopen() {
     setBusy(true)
@@ -272,6 +275,9 @@ function ReportView({ id, onBack, onOpenReport, onOpenUser, onOpenPost, onAccess
         <Button intent="primary" icon="take-action" onClick={() => setDialog('resolve')}>Take action</Button>
       </ButtonGroup>}
       {report && report.status !== 'open' && <Button icon="undo" loading={busy} onClick={() => void reopen()}>Reopen</Button>}
+      {report && <Button icon="high-priority" intent={report.escalatedAt ? 'none' : 'warning'} onClick={() => setEscalating(true)}>
+        {report.escalatedAt ? 'Escalated' : 'Threat to life or safety'}
+      </Button>}
     </header>
     {notice && <Callout className="admin-notice" intent="success" role="status">{notice}</Callout>}
     {actionError && <Callout className="admin-notice" intent="danger" role="alert">{actionError}</Callout>}
@@ -289,9 +295,14 @@ function ReportView({ id, onBack, onOpenReport, onOpenUser, onOpenPost, onAccess
         <dl className="admin-user-facts">
           <div><dt>Status</dt><dd><Tag minimal intent={statusIntent[report.status]}>{report.status}</Tag></dd></div>
           <div><dt>Reason</dt><dd>{reportReasonLabels[report.reason]}</dd></div>
-          <div><dt>Reporter</dt><dd>{report.reporterId
-            ? <a href={'/moderation/user/' + report.reporterId} onClick={event => { event.preventDefault(); onOpenUser(report.reporterId!) }}>@{report.reporterHandle}</a>
-            : '@' + report.reporterHandle}</dd></div>
+          <div><dt>Reporter</dt><dd>{report.channel === 'public'
+            ? <>Public form: {report.notifierName ?? 'anonymous'}{report.notifierEmail && <> &lt;<a href={'mailto:' + report.notifierEmail}>{report.notifierEmail}</a>&gt;</>}</>
+            : report.reporterId
+              ? <a href={'/moderation/user/' + report.reporterId} onClick={event => { event.preventDefault(); onOpenUser(report.reporterId!) }}>@{report.reporterHandle}</a>
+              : report.reporterHandle ? '@' + report.reporterHandle : 'Deleted account'}</dd></div>
+          {report.legalGround && <div><dt>Law named</dt><dd>{report.legalGround}</dd></div>}
+          {report.goodFaithAt && <div><dt>Good faith statement</dt><dd>Confirmed</dd></div>}
+          {report.escalatedAt && <div><dt>Escalated</dt><dd>{report.escalationAuthority}{report.escalationRef ? ` (${report.escalationRef})` : ''}, <time dateTime={report.escalatedAt}>{new Date(report.escalatedAt).toLocaleString()}</time></dd></div>}
           <div><dt>Received</dt><dd><time dateTime={report.createdAt}>{new Date(report.createdAt).toLocaleString()}</time></dd></div>
           <div><dt>Reported user</dt><dd>{report.target.owner
             ? <a href={'/moderation/user/' + report.target.owner.id} onClick={event => { event.preventDefault(); onOpenUser(report.target.owner!.id) }}>@{report.target.owner.handle}</a>
@@ -319,6 +330,12 @@ function ReportView({ id, onBack, onOpenReport, onOpenUser, onOpenPost, onAccess
         </section>}
       </Card>
     </div>}
+    {report && escalating && <EscalateDialog report={report} onClose={() => setEscalating(false)} onAccessLost={onAccessLost}
+      onDone={() => {
+        setEscalating(false)
+        setNotice('Escalation recorded.')
+        setRevision(value => value + 1)
+      }} />}
     {report && dialog && <ResolveDialog report={report} decision={dialog} onClose={() => setDialog(null)} onAccessLost={onAccessLost}
       onDone={message => {
         setDialog(null)
@@ -343,6 +360,8 @@ function ResolveDialog({ report, decision, onClose, onDone, onAccessLost }: {
   const [banReason, setBanReason] = useState(() => reportReasonLabels[report.reason])
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
+  const [ground, setGround] = useState<Ground>(() => ({ ...emptyGround, ref: reasonClause[report.reason] ?? '' }))
+  const acting = removeContent || ban || clearProfile.length > 0
   const total = report.related.filter(row => row.status === 'open').length + 1
 
   async function submit() {
@@ -353,6 +372,7 @@ function ResolveDialog({ report, decision, onClose, onDone, onAccessLost }: {
         decision, note, removeContent,
         clearProfile: report.targetType === 'user' ? clearProfile : [],
         ban: ban ? { reason: banReason.trim() } : undefined,
+        ground: acting ? { ...ground, facts: ground.facts.trim() } : undefined,
       })
       onDone(decision === 'dismiss' ? `Dismissed ${total} report${total === 1 ? '' : 's'}.` : `Resolved ${total} report${total === 1 ? '' : 's'}.`)
     } catch (cause) {
@@ -388,6 +408,7 @@ function ResolveDialog({ report, decision, onClose, onDone, onAccessLost }: {
             <TextArea id="report-ban-reason" fill maxLength={280} value={banReason} onChange={event => setBanReason(event.currentTarget.value)} />
           </FormGroup>}
         </>}
+        {acting && <GroundFields value={ground} onChange={setGround} />}
       </>}
       <FormGroup label="Note for other moderators (optional)" labelFor="report-note">
         <TextArea id="report-note" fill maxLength={1000} value={note} onChange={event => setNote(event.currentTarget.value)} />
@@ -396,9 +417,54 @@ function ResolveDialog({ report, decision, onClose, onDone, onAccessLost }: {
     </DialogBody>
     <DialogFooter actions={<>
       <Button onClick={onClose} disabled={saving}>Cancel</Button>
-      <Button intent={removeContent || ban ? 'danger' : 'primary'} loading={saving} disabled={ban && !banReason.trim()} onClick={() => void submit()}>
+      <Button intent={removeContent || ban ? 'danger' : 'primary'} loading={saving} disabled={(ban && !banReason.trim()) || (acting && !groundReady(ground))} onClick={() => void submit()}>
         {decision === 'dismiss' ? 'Dismiss' : removeContent || ban || clearProfile.length ? 'Apply and resolve' : 'Resolve without action'}
       </Button>
+    </>} />
+  </Dialog>
+}
+
+function EscalateDialog({ report, onClose, onDone, onAccessLost }: {
+  report: ReportDetail
+  onClose: () => void
+  onDone: () => void
+  onAccessLost: () => void
+}) {
+  const [authority, setAuthority] = useState(report.escalationAuthority ?? '')
+  const [reference, setReference] = useState(report.escalationRef ?? '')
+  const [saving, setSaving] = useState(false)
+  const [error, setError] = useState('')
+  async function submit() {
+    setSaving(true)
+    setError('')
+    try {
+      await escalateReport(report.id, authority.trim(), reference.trim())
+      onDone()
+    } catch (cause) {
+      if (cause instanceof AdminAccessError) onAccessLost()
+      else setError(cause instanceof Error ? cause.message : 'Could not record the escalation.')
+    } finally {
+      setSaving(false)
+    }
+  }
+  return <Dialog isOpen onClose={onClose} title="Report to law enforcement (Art. 18 DSA)" icon="high-priority">
+    <DialogBody>
+      <Callout intent="warning" className="admin-notice">
+        If someone is in immediate danger, call 110 first. Otherwise send the details to the BKA (Zentrale Meldestelle für
+        strafbare Inhalte im Internet) or the police of Schleswig-Holstein, then record it here. Follow the Art. 18 procedure in the compliance repo.
+      </Callout>
+      <FormGroup label="Authority" labelFor="escalation-authority">
+        <InputGroup id="escalation-authority" maxLength={120} value={authority} onChange={event => setAuthority(event.currentTarget.value)}
+          placeholder="BKA, Polizei Schleswig-Holstein, …" />
+      </FormGroup>
+      <FormGroup label="Case reference (optional)" labelFor="escalation-ref">
+        <InputGroup id="escalation-ref" maxLength={200} value={reference} onChange={event => setReference(event.currentTarget.value)} />
+      </FormGroup>
+      {error && <Callout intent="danger" role="alert">{error}</Callout>}
+    </DialogBody>
+    <DialogFooter actions={<>
+      <Button onClick={onClose} disabled={saving}>Cancel</Button>
+      <Button intent="warning" loading={saving} disabled={!authority.trim()} onClick={() => void submit()}>Record escalation</Button>
     </>} />
   </Dialog>
 }

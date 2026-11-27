@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { z } from 'zod'
+import type { Ground } from './ground'
 
 const user = z.object({ id: z.uuid(), name: z.string(), handle: z.string(), joined: z.string(), avatarUrl: z.string().nullable() })
 export const roles = z.enum(['admin', 'moderator', 'og', 'user'])
@@ -61,7 +62,7 @@ export async function updateUserBadges(id: string, change: BadgeChange) {
   return z.object({ badges: z.array(badge) }).parse(result).badges
 }
 
-export async function moderateAccount(id: string, change: { action: 'ban'; reason: string } | { action: 'unban' | 'remove' }) {
+export async function moderateAccount(id: string, change: { action: 'ban'; reason: string; ground: Ground } | { action: 'unban' | 'remove' }) {
   await adminRequest('/api/admin/users/' + id + '/account', undefined, {
     method: 'PATCH',
     headers: { 'Content-Type': 'application/json' },
@@ -78,11 +79,11 @@ export async function updateUserProfiles(ids: string[], action: BulkProfileActio
   return z.object({ users: z.array(managedUser.pick({ id: true, name: true, bio: true })) }).parse(result).users
 }
 
-export async function updateUserProfile(id: string, change: ProfileChange) {
+export async function updateUserProfile(id: string, change: ProfileChange, ground?: Ground) {
   const result = await adminRequest('/api/admin/users/' + id + '/profile', undefined, {
     method: 'PATCH',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(change),
+    body: JSON.stringify(ground ? { ...change, ground } : change),
   })
   return managedUser.parse(result)
 }
@@ -141,9 +142,15 @@ export const postList = z.object({
   posts: z.array(post), hasNextPage: z.boolean(), canModerate: z.boolean().default(false), canSetVisibility: z.boolean().default(false),
 })
 
-export async function setPostVisibility(id: string, hidden: boolean) {
+export async function setPostVisibility(id: string, hidden: boolean, ground?: Ground) {
   await adminRequest('/api/admin/posts/' + id + '/visibility', undefined, {
-    method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ hidden }),
+    method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(hidden ? { hidden, ground } : { hidden }),
+  })
+}
+
+export async function removeWithGround(path: string, ground: Ground) {
+  await adminRequest(path, undefined, {
+    method: 'DELETE', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ground }),
   })
 }
 export const imageFlagPage = z.object({
@@ -219,6 +226,8 @@ const requestErrors = new Map([
   ['release_empty', 'This app has no unreleased entries to release.'],
   ['changelog_entry_released', 'This entry was already released and can no longer change.'],
   ['invalid_release', 'Enter a release tag of up to 128 characters.'],
+  ['ground_required', 'Choose a ground and describe the facts. The user receives them as the statement of reasons.'],
+  ['invalid_ground', 'Choose a valid terms clause or legal ground and describe the facts.'],
   ['invalid_content','Use up to 2,000 characters and no more than two blank lines in a row. A post without attachments needs text.'],
 ])
 
@@ -242,6 +251,8 @@ export async function adminRequest(path: string, signal?: AbortSignal, options?:
       if (error.data?.error === 'Handle is already taken') throw new Error('That username is already taken.')
       if (error.data?.error === 'report_closed') throw new Error('This report was already handled.')
       if (error.data?.error === 'report_already_open') throw new Error('The reporter has another open report on this content.')
+      if (error.data?.error === 'independent_review_required') throw new Error('Another staff member has to review an appeal against your own decision.')
+      if (error.data?.error === 'appeal_closed') throw new Error('This appeal was already decided.')
       throw new Error('This role is protected.')
     }
     if (response.status === 503) throw new Error('Admin API unavailable. Check API configuration and database connectivity.')
@@ -307,10 +318,10 @@ export function useAdminHealth() {
   return services
 }
 
-export const reportReasons = ['spam', 'harassment', 'hate', 'violence', 'sexual', 'self_harm', 'misinformation', 'impersonation', 'illegal', 'other'] as const
+export const reportReasons = ['spam', 'harassment', 'hate', 'violence', 'sexual', 'self_harm', 'misinformation', 'impersonation', 'ai_generated', 'illegal', 'other'] as const
 export const reportReasonLabels: Record<(typeof reportReasons)[number], string> = {
   spam: 'Spam', harassment: 'Harassment', hate: 'Hate speech', violence: 'Violence or threats', sexual: 'Sexual content',
-  self_harm: 'Self-harm', misinformation: 'Misinformation', impersonation: 'Impersonation', illegal: 'Illegal content', other: 'Other',
+  self_harm: 'Self-harm', misinformation: 'Misinformation', impersonation: 'Impersonation', ai_generated: 'AI-generated content', illegal: 'Illegal content', other: 'Other',
 }
 const reportSnapshot = z.discriminatedUnion('type', [
   z.object({
@@ -337,6 +348,10 @@ const reportRow = z.object({
   reason: z.enum(reportReasons), details: z.string(), snapshot: reportSnapshot, status: reportStatus,
   resolution: z.string().nullable(), note: z.string().nullable(), resolvedByHandle: z.string().nullable(), resolvedAt: z.string().nullable(),
   createdAt: z.string(), openOnTarget: z.number(),
+  channel: z.enum(['in_app', 'public']).default('in_app'), legalGround: z.string().nullable().default(null),
+  notifierName: z.string().nullable().default(null), notifierEmail: z.string().nullable().default(null),
+  goodFaithAt: z.string().nullable().default(null), escalatedAt: z.string().nullable().default(null),
+  escalationAuthority: z.string().nullable().default(null), escalationRef: z.string().nullable().default(null),
 })
 export type ReportRow = z.infer<typeof reportRow>
 export const reportPage = z.object({ reports: z.array(reportRow), hasNextPage: z.boolean(), canResolve: z.boolean(), canAct: z.boolean() })
@@ -359,11 +374,18 @@ export type ReportResolution = {
   removeContent?: boolean
   clearProfile?: ('bio' | 'avatar' | 'banner' | 'name')[]
   ban?: { reason: string }
+  ground?: Ground
 }
 
 export async function resolveReport(id: string, resolution: ReportResolution) {
   await adminRequest('/api/admin/reports/' + id + '/resolve', undefined, {
     method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(resolution),
+  })
+}
+
+export async function escalateReport(id: string, authority: string, reference: string) {
+  await adminRequest('/api/admin/reports/' + id + '/escalate', undefined, {
+    method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ authority, reference }),
   })
 }
 

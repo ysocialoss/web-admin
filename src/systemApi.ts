@@ -39,6 +39,11 @@ const moderation = z.object({
   imageFlags7d: z.number(), actions24h: z.number(), actions7d: z.number(), waitlist: z.number(),
   openByReason: z.array(z.object({ reason: z.string(), count: z.number() })),
 })
+const feed = z.object({
+  events: z.number(), events24h: z.number(), trackedUsers7d: z.number(), personalizationOff: z.number(),
+  byType24h: z.array(z.object({ type: z.string(), count: z.number() })),
+  eventsByDay: day,
+})
 const runtime = z.object({
   node: z.string(), platform: z.string(), pid: z.number(), environment: z.string(), startedAt: z.string(),
   uptimeSeconds: z.number(), draining: z.boolean(),
@@ -56,6 +61,7 @@ export const systemStatus = z.object({
   queues: section(queues),
   community: section(community),
   moderation: section(moderation),
+  feed: section(feed).optional(),
 })
 export type SystemStatus = z.infer<typeof systemStatus>
 export const available = <T extends object>(value: T | { error: true }): value is T => !('error' in value)

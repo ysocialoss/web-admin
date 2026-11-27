@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { AdminAccessError, adminRequest, setPostVisibility, targetSchema } from './adminApi'
+import { AdminAccessError, adminRequest, removeWithGround, setPostVisibility, targetSchema } from './adminApi'
 import type { AccountAction, ModerationDetail } from './adminApi'
 import UserAvatar from './UserAvatar'
 import { LoadingRows, LoadingStatus } from './LoadingState'
@@ -11,6 +11,7 @@ import UserPosts from './UserPosts'
 import { PostGif, PostVoice } from './PostPreview'
 import PostImageAttachments from './PostImageAttachments'
 import PostTextEditor from './PostTextEditor'
+import { requestGround } from './ground'
 
 export type ModerationTarget = { kind: 'user' | 'post'; id: string }
 
@@ -63,8 +64,11 @@ export default function Moderation({ onAccessLost, pathname, onNavigate, onOpenP
     setRemoving(true)
     setActionError('')
     try {
-      if (kind === 'visibility') await setPostVisibility(post.id, !post.hiddenAt)
-      else await adminRequest('/api/admin/posts/' + post.id + (kind === 'images' ? '/attachments/images' : ''), undefined, { method: 'DELETE' })
+      const ground = kind === 'visibility' && post.hiddenAt ? undefined
+        : await requestGround(kind === 'visibility' ? 'Why hide this?' : kind === 'images' ? 'Why remove the images?' : 'Why remove this?')
+      if (!ground && !(kind === 'visibility' && post.hiddenAt)) return
+      if (kind === 'visibility') await setPostVisibility(post.id, !post.hiddenAt, ground ?? undefined)
+      else await removeWithGround('/api/admin/posts/' + post.id + (kind === 'images' ? '/attachments/images' : ''), ground!)
       if (kind === 'post') onRemoved()
       else {
         setConfirmation(null)

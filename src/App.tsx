@@ -28,13 +28,20 @@ import Flags from './Flags'
 import Reports from './Reports'
 import Waitlist from './Waitlist'
 import Changelog from './Changelog'
+import GroundDialogHost from './GroundDialog'
+import Appeals from './Appeals'
+import Safety from './Safety'
+import Contact from './Contact'
 import type { ModerationTarget } from './Moderation'
 
 const sections = [
   { id: 'overview', title: 'Overview', icon: 'dashboard', path: '/' },
   { id: 'reports', title: 'Reports', icon: 'warning-sign', path: '/reports' },
   { id: 'moderation', title: 'Content review', icon: 'shield', path: '/moderation' },
+  { id: 'appeals', title: 'Appeals', icon: 'take-action', path: '/appeals' },
   { id: 'flags', title: 'Flags', icon: 'flag', path: '/flags' },
+  { id: 'safety', title: 'Safety incidents', icon: 'shield', path: '/safety' },
+  { id: 'contact', title: 'Contact messages', icon: 'envelope', path: '/contact' },
   { id: 'users', title: 'Users', icon: 'people', path: '/users' },
   { id: 'waitlist', title: 'Waitlist', icon: 'time', path: '/waitlist' },
   { id: 'changelog', title: 'Changelog', icon: 'git-commit', path: '/changelog' },
@@ -112,6 +119,7 @@ function ConnectedApp({ onSignOut, onAccessLost, signingOut }: { onSignOut: () =
 
   return (
     <>
+      <GroundDialogHost />
       <Navbar className="admin-navbar" aria-label="Moderation toolbar">
         <Navbar.Group>
           <Navbar.Heading>
@@ -201,6 +209,9 @@ function ConnectedApp({ onSignOut, onAccessLost, signingOut }: { onSignOut: () =
         {activeSection.id === 'reports' && <Reports pathname={pathname} onNavigate={navigate} onAccessLost={onAccessLost}
           onChanged={() => setReportRevision(value => value + 1)}
           onOpenUser={id => navigate('/moderation/user/' + id, true)} onOpenPost={id => navigate('/moderation/post/' + id, true)} />}
+        {activeSection.id === 'appeals' && <Appeals onAccessLost={onAccessLost} onOpenUser={id => navigate('/moderation/user/' + id)} />}
+        {activeSection.id === 'safety' && <Safety onAccessLost={onAccessLost} />}
+        {activeSection.id === 'contact' && <Contact onAccessLost={onAccessLost} />}
         {activeSection.id === 'flags' && <Flags onAccessLost={onAccessLost} onOpenUser={id => navigate('/moderation/user/' + id)} />}
         {activeSection.id === 'system' && <System onAccessLost={onAccessLost} />}
         {activeSection.id === 'changelog' && <Changelog onAccessLost={onAccessLost} />}
