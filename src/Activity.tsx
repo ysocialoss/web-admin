@@ -32,6 +32,7 @@ const actionLabels: Record<string, string> = {
   addImage: 'Added image', replaceImage: 'Replaced image', removeImage: 'Removed image', removeImages: 'Removed images',
   removeImageFlag: 'Removed image flag', clearAttachments: 'Cleared attachments', approveUser: 'Approved account',
   banUser: 'Banned account', unbanUser: 'Unbanned account', removeUser: 'Removed account',
+  updateFeedConfig: 'Changed feed configuration',
 }
 const label = (action: string) => actionLabels[action] ?? action
 const destructive = new Set(['removePost', 'removeImageFlag', 'banUser', 'removeUser'])

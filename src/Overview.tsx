@@ -59,6 +59,14 @@ export default function Overview({ data, onOpenModeration, onNavigate, onRefresh
         <Text className={Classes.TEXT_MUTED}>posts and replies this week</Text>
         <BarChart data={status.community.postsByDay} label="Posts, 14 days" unit="posts" />
       </Card>}
+      {status.feed && available(status.feed) && <Card className="admin-metric">
+        <Text className={Classes.TEXT_MUTED}>Feed</Text>
+        <strong className="overview-metric-number">{status.feed.optedIn.toLocaleString()}</strong>
+        <Text className={Classes.TEXT_MUTED}>opted in · {status.feed.optedOut} off · {status.feed.undecided} undecided</Text>
+        <Text className={Classes.TEXT_MUTED}>{status.feed.latencyMs24h ? `p95 ${Math.round(status.feed.latencyMs24h.p95)} ms` : 'no rankings yet'} · {(status.feed.requests24h.personal + status.feed.requests24h.public).toLocaleString()} rankings today</Text>
+        {status.feed.errors24h > 0 && <Tag intent="danger" minimal icon="error">{status.feed.errors24h} pipeline errors in 24 hours</Tag>}
+        <Button variant="minimal" size="small" endIcon="arrow-right" onClick={() => onNavigate('/feed')}>Feed dashboard</Button>
+      </Card>}
       {available(status.moderation) && <Card className="admin-metric">
         <Text className={Classes.TEXT_MUTED}>Moderation workload</Text>
         <strong className="overview-metric-number">{status.moderation.openReports}</strong>
