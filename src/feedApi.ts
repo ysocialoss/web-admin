@@ -10,6 +10,21 @@ const weights = z.object({
   dwell: z.number(), click: z.number(), profile: z.number(), like: z.number(), comment: z.number(),
   share: z.number(), save: z.number(), follow: z.number(), negative: z.number(),
 })
+const levels = z.tuple([z.number(), z.number(), z.number(), z.number(), z.number()])
+const controlsConfig = z.object({
+  freshnessScale: levels,
+  repliesFactor: levels,
+  discoveryFactor: levels,
+  interestedAuthor: z.number(),
+  interestedTopic: z.number(),
+  notInterestedAuthor: z.number(),
+  notInterestedTopic: z.number(),
+  topicMore: z.number(),
+  topicLess: z.number(),
+  feedbackDays: z.number(),
+  snoozeDays: z.number(),
+})
+export type FeedControlsConfig = z.infer<typeof controlsConfig>
 export const feedConfigSchema = z.object({
   weights,
   epsilon: z.number(),
@@ -27,6 +42,7 @@ export const feedConfigSchema = z.object({
   authorMaxPer10: z.number(),
   publicCacheSeconds: z.number(),
   timeoutMs: z.number(),
+  controls: controlsConfig,
 })
 export type FeedConfig = z.infer<typeof feedConfigSchema>
 
@@ -96,6 +112,21 @@ const volume = z.object({
   retentionDue: z.array(z.object({ rule: z.string(), rows: z.number() })),
 })
 
+const controls = z.object({
+  enough: z.boolean(),
+  optedIn: z.number(),
+  usersActed: nullableNumber,
+  usersWithControls: nullableNumber,
+  usersTuned: nullableNumber,
+  active: z.object({
+    notInterested: z.number(), interested: z.number(), snoozes: z.number(),
+    authors: z.number(), topicsMore: z.number(), topicsLess: z.number(),
+  }),
+  actionsByDay: z.array(z.object({ day: z.string(), less: z.number(), more: z.number(), topic: z.number() })),
+  sliders: z.array(z.object({ slider: z.string(), levels: z.array(z.object({ level: z.number(), users: z.number() })) })),
+  topTopics: z.array(z.object({ topic: z.string(), direction: z.enum(['more', 'less']), users: z.number() })),
+})
+
 export const feedDashboard = z.object({
   generatedAt: z.string(),
   days: z.number(),
@@ -108,6 +139,7 @@ export const feedDashboard = z.object({
   training: section(training),
   model: section(model),
   volume: section(volume),
+  controls: section(controls).optional(),
 })
 export type FeedDashboard = z.infer<typeof feedDashboard>
 

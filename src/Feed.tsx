@@ -8,7 +8,7 @@ import SeriesChart from './SeriesChart'
 import CategoryChart from './CategoryChart'
 import { Facts, Meter, Unavailable } from './System'
 import { available, formatAge, formatBytes } from './systemApi'
-import { percent, saveFeedConfig, useFeedDashboard, type FeedConfig, type FeedDashboard } from './feedApi'
+import { percent, saveFeedConfig, useFeedDashboard, type FeedConfig, type FeedControlsConfig, type FeedDashboard } from './feedApi'
 
 const ranges = [7, 14, 30] as const
 const headLabels: Record<string, string> = {
@@ -52,7 +52,7 @@ export default function Feed({ onAccessLost }: { onAccessLost: () => void }) {
 }
 
 function FeedBody({ data, onSaved }: { data: FeedDashboard; onSaved: () => void }) {
-  const { adoption, pipeline, engagement, position, diversity, training, model, volume } = data
+  const { adoption, pipeline, engagement, position, diversity, training, model, volume, controls } = data
   const { minUsers, minViewers } = data.thresholds
   return <>
     <p className={Classes.TEXT_MUTED}>
@@ -180,6 +180,10 @@ function FeedBody({ data, onSaved }: { data: FeedDashboard; onSaved: () => void 
           : <p className={Classes.TEXT_MUTED}>No post has been seen by {minViewers} people in the Feed yet.</p>) : <Unavailable />}
       </Panel>
 
+      <Panel title="User controls" wide>
+        {!controls ? <Unavailable /> : available(controls) ? <ControlsPanel controls={controls} minUsers={minUsers} /> : <Unavailable />}
+      </Panel>
+
       <Panel title="Training readiness">
         {available(training) ? <>
           <p className={Classes.TEXT_MUTED}>
@@ -214,8 +218,61 @@ function FeedBody({ data, onSaved }: { data: FeedDashboard; onSaved: () => void 
   </>
 }
 
+type ControlsInfo = Extract<NonNullable<FeedDashboard['controls']>, { enough: boolean }>
+const sliderLabels: Record<string, string> = { discovery: 'Discovery', freshness: 'Freshness', replies: 'Replies' }
+const levelLabels: Record<number, string> = { [-2]: 'Lowest', [-1]: 'Lower', 0: 'Middle', 1: 'Higher', 2: 'Highest' }
+
+function ControlsPanel({ controls, minUsers }: { controls: ControlsInfo; minUsers: number }) {
+  const { active } = controls
+  return <>
+    <Facts items={[
+      ['Used a control in this range', controls.usersActed === null ? 'too few users' : `${controls.usersActed} of ${controls.optedIn} opted-in users`],
+      ['People with active controls', controls.usersWithControls === null ? `fewer than ${minUsers}` : controls.usersWithControls],
+      ['Moved a slider', controls.usersTuned === null ? 'too few users' : controls.usersTuned],
+      ['Active ratings', `${active.notInterested} not interested · ${active.interested} interested`],
+      ['Active snoozes', active.snoozes],
+      ['Topic choices', `${active.topicsMore} more · ${active.topicsLess} fewer`],
+    ]} />
+    <SeriesChart label="Control actions per day" unit="actions"
+      series={[{ key: 'less', label: 'Not interested and snooze' }, { key: 'more', label: 'Interested' }, { key: 'topic', label: 'Topic choices' }]}
+      data={controls.actionsByDay.map(row => ({ day: row.day, values: { less: row.less, more: row.more, topic: row.topic } }))} />
+    <p className={Classes.TEXT_MUTED}>Actions are counted only for people with feed personalization on.</p>
+    {controls.enough ? <div className="admin-feed-grid">
+      {controls.sliders.map(slider => <CategoryChart key={slider.slider} label={`${sliderLabels[slider.slider] ?? slider.slider} slider`}
+        format={value => `${value} ${value === 1 ? 'user' : 'users'}`}
+        data={slider.levels.map(level => ({ label: levelLabels[level.level] ?? String(level.level), value: level.users }))} />)}
+    </div> : <TooFew minUsers={minUsers} />}
+    <h3 className="admin-subheading">Most chosen topics</h3>
+    {controls.topTopics.length ? <HTMLTable compact striped className="overview-table">
+      <thead><tr><th scope="col">Topic</th><th scope="col">Choice</th><th scope="col">People</th></tr></thead>
+      <tbody>{controls.topTopics.map(row => <tr key={`${row.topic}-${row.direction}`}>
+        <td>#{row.topic}</td><td>{row.direction === 'more' ? 'More' : 'Fewer'}</td><td>{row.users}</td>
+      </tr>)}</tbody>
+    </HTMLTable> : <p className={Classes.TEXT_MUTED}>No topic has been chosen by {minUsers} or more people yet.</p>}
+  </>
+}
+
 type ModelInfo = Extract<FeedDashboard['model'], { config: FeedConfig }>
-const numberFields: { key: Exclude<keyof FeedConfig, 'weights'>; label: string; step: number; min: number; max: number }[] = [
+type ScalarKey = Exclude<keyof FeedConfig, 'weights' | 'controls'>
+type ControlNumberKey = Exclude<keyof FeedControlsConfig, 'freshnessScale' | 'repliesFactor' | 'discoveryFactor'>
+type ControlTableKey = 'discoveryFactor' | 'freshnessScale' | 'repliesFactor'
+const controlFields: { key: ControlNumberKey; label: string; step: number; min: number; max: number }[] = [
+  { key: 'interestedAuthor', label: 'Interested: author', step: 0.05, min: 0.05, max: 5 },
+  { key: 'interestedTopic', label: 'Interested: topics', step: 0.05, min: 0.05, max: 5 },
+  { key: 'notInterestedAuthor', label: 'Not interested: author', step: 0.05, min: 0.05, max: 5 },
+  { key: 'notInterestedTopic', label: 'Not interested: topics', step: 0.05, min: 0.05, max: 5 },
+  { key: 'topicMore', label: 'More about topic', step: 0.05, min: 0.05, max: 5 },
+  { key: 'topicLess', label: 'Fewer about topic', step: 0.05, min: 0.05, max: 5 },
+  { key: 'feedbackDays', label: 'Ratings last (days)', step: 1, min: 1, max: 365 },
+  { key: 'snoozeDays', label: 'Snooze lasts (days)', step: 1, min: 1, max: 365 },
+]
+const controlTables: { key: ControlTableKey; label: string; min: number; max: number }[] = [
+  { key: 'discoveryFactor', label: 'Discovery multiplier per step', min: 0, max: 5 },
+  { key: 'freshnessScale', label: 'Freshness half-life scale per step', min: 0.1, max: 10 },
+  { key: 'repliesFactor', label: 'Replies multiplier per step (0 hides replies)', min: 0, max: 5 },
+]
+const stepNames = ['lowest', 'lower', 'middle', 'higher', 'highest']
+const numberFields: { key: ScalarKey; label: string; step: number; min: number; max: number }[] = [
   { key: 'epsilon', label: 'Exploration share', step: 0.01, min: 0, max: 0.5 },
   { key: 'exploreFrom', label: 'Explore from position', step: 1, min: 0, max: 20 },
   { key: 'windowHours', label: 'Window (hours)', step: 1, min: 12, max: 336 },
@@ -240,6 +297,11 @@ function changes(before: FeedConfig, after: FeedConfig) {
     if (before.weights[key] !== after.weights[key]) list.push(`Weight ${headLabels[key] ?? key}: ${before.weights[key]} → ${after.weights[key]}`)
   for (const field of numberFields)
     if (before[field.key] !== after[field.key]) list.push(`${field.label}: ${before[field.key]} → ${after[field.key]}`)
+  for (const field of controlFields)
+    if (before.controls[field.key] !== after.controls[field.key]) list.push(`${field.label}: ${before.controls[field.key]} → ${after.controls[field.key]}`)
+  for (const table of controlTables)
+    if (before.controls[table.key].join() !== after.controls[table.key].join())
+      list.push(`${table.label}: ${before.controls[table.key].join(', ')} → ${after.controls[table.key].join(', ')}`)
   return list
 }
 
@@ -266,7 +328,14 @@ function ModelPanel({ model, onSaved }: { model: ModelInfo; onSaved: () => void 
       setSaving(false)
     }
   }
-  const setNumber = (key: Exclude<keyof FeedConfig, 'weights'>, value: number) => setDraft(current => ({ ...current, [key]: value }))
+  const setNumber = (key: ScalarKey, value: number) => setDraft(current => ({ ...current, [key]: value }))
+  const setControl = (key: ControlNumberKey, value: number) =>
+    setDraft(current => ({ ...current, controls: { ...current.controls, [key]: value } }))
+  const setStep = (key: ControlTableKey, index: number, value: number) => setDraft(current => {
+    const next = [...current.controls[key]] as FeedControlsConfig[ControlTableKey]
+    next[index] = value
+    return { ...current, controls: { ...current.controls, [key]: next } }
+  })
   return <>
     <Facts items={[
       ['Active model', model.active ? <>Trained model <code>{model.active.id.slice(0, 8)}</code></> : <Tag minimal>Prior (hand-set weights)</Tag>],
@@ -291,6 +360,22 @@ function ModelPanel({ model, onSaved }: { model: ModelInfo; onSaved: () => void 
           value={draft[field.key]} onValueChange={value => Number.isFinite(value) && setNumber(field.key, value)} />
       </FormGroup>)}
     </div>
+    <h3 className="admin-subheading">User controls</h3>
+    <div className="admin-config-form">
+      {controlFields.map(field => <FormGroup key={field.key} label={field.label} labelFor={`control-${field.key}`}>
+        <NumericInput id={`control-${field.key}`} fill min={field.min} max={field.max} stepSize={field.step} minorStepSize={field.step < 1 ? 0.01 : null}
+          value={draft.controls[field.key]} onValueChange={value => Number.isFinite(value) && setControl(field.key, value)} />
+      </FormGroup>)}
+    </div>
+    {controlTables.map(table => <fieldset key={table.key} className="admin-config-steps">
+      <legend>{table.label}</legend>
+      <div className="admin-config-form">
+        {draft.controls[table.key].map((value, index) => <FormGroup key={index} label={stepNames[index]} labelFor={`control-${table.key}-${index}`}>
+          <NumericInput id={`control-${table.key}-${index}`} fill min={table.min} max={table.max} stepSize={0.1} minorStepSize={0.01}
+            value={value} onValueChange={next => Number.isFinite(next) && setStep(table.key, index, next)} />
+        </FormGroup>)}
+      </div>
+    </fieldset>)}
     {invalid && <Callout intent="warning">The wide window has to be at least as long as the normal window.</Callout>}
     {message && <Callout intent={message.intent} role={message.intent === 'danger' ? 'alert' : 'status'}>{message.text}</Callout>}
     {confirming && diff.length > 0 ? <Callout intent="primary" title="Review the changes">
