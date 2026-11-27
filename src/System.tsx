@@ -184,6 +184,7 @@ function SystemBody({ data, onNavigate }: { data: SystemStatus; onNavigate?: (pa
               ['Caught up in 24 hours', feed.caughtUp24h],
               ['Feed choice', `${feed.optedIn} on · ${feed.optedOut} off · ${feed.undecided} not decided`],
               ['From the Feed tab this week', `${feed.navChoices7d.unlocks} turned on · ${feed.navChoices7d.declines} declined`],
+              ['Feed controls used this week', feed.controlsUsed7d.toLocaleString()],
               ['Events recorded', `${feed.events.toLocaleString()} (${feed.events24h.toLocaleString()} in 24 hours)`],
               ['Tracked readers this week', feed.trackedUsers7d],
             ]} />

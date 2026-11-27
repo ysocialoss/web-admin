@@ -49,6 +49,7 @@ const feed = z.object({
   errors24h: z.number().default(0), fallbacks24h: z.number().default(0), caughtUp24h: z.number().default(0),
   publicCache24h: z.object({ hits: z.number(), misses: z.number() }).default({ hits: 0, misses: 0 }),
   navChoices7d: z.object({ unlocks: z.number(), declines: z.number() }).default({ unlocks: 0, declines: 0 }),
+  controlsUsed7d: z.number().default(0),
 })
 const runtime = z.object({
   node: z.string(), platform: z.string(), pid: z.number(), environment: z.string(), startedAt: z.string(),
