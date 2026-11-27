@@ -16,6 +16,7 @@ export const termsClauses = [
   { id: '5.9', title: 'Impersonation' },
   { id: '5.10', title: 'Privacy of others' },
   { id: '5.11', title: 'Intellectual property' },
+  { id: '5.12', title: 'AI-generated content' },
   { id: '6.2', title: 'Ban evasion and misuse of the service' },
 ] as const
 
@@ -35,7 +36,7 @@ export const legalCategories = [
 
 export const reasonClause: Record<string, string> = {
   illegal: '5.1', harassment: '5.2', hate: '5.3', violence: '5.4', sexual: '5.5',
-  self_harm: '5.6', spam: '5.7', misinformation: '5.8', impersonation: '5.9',
+  self_harm: '5.6', spam: '5.7', misinformation: '5.8', impersonation: '5.9', ai_generated: '5.12',
 }
 
 type Pending = { title: string; suggested?: string; resolve: (ground: Ground | null) => void }

@@ -318,10 +318,10 @@ export function useAdminHealth() {
   return services
 }
 
-export const reportReasons = ['spam', 'harassment', 'hate', 'violence', 'sexual', 'self_harm', 'misinformation', 'impersonation', 'illegal', 'other'] as const
+export const reportReasons = ['spam', 'harassment', 'hate', 'violence', 'sexual', 'self_harm', 'misinformation', 'impersonation', 'ai_generated', 'illegal', 'other'] as const
 export const reportReasonLabels: Record<(typeof reportReasons)[number], string> = {
   spam: 'Spam', harassment: 'Harassment', hate: 'Hate speech', violence: 'Violence or threats', sexual: 'Sexual content',
-  self_harm: 'Self-harm', misinformation: 'Misinformation', impersonation: 'Impersonation', illegal: 'Illegal content', other: 'Other',
+  self_harm: 'Self-harm', misinformation: 'Misinformation', impersonation: 'Impersonation', ai_generated: 'AI-generated content', illegal: 'Illegal content', other: 'Other',
 }
 const reportSnapshot = z.discriminatedUnion('type', [
   z.object({
