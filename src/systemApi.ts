@@ -43,6 +43,13 @@ const feed = z.object({
   events: z.number(), events24h: z.number(), trackedUsers7d: z.number(), personalizationOff: z.number(),
   byType24h: z.array(z.object({ type: z.string(), count: z.number() })),
   eventsByDay: day,
+  optedIn: z.number().default(0), optedOut: z.number().default(0), undecided: z.number().default(0),
+  requests24h: z.object({ personal: z.number(), public: z.number(), following: z.number() }).default({ personal: 0, public: 0, following: 0 }),
+  latencyMs24h: z.object({ p50: z.number(), p95: z.number() }).nullable().default(null),
+  errors24h: z.number().default(0), fallbacks24h: z.number().default(0), caughtUp24h: z.number().default(0),
+  publicCache24h: z.object({ hits: z.number(), misses: z.number() }).default({ hits: 0, misses: 0 }),
+  navChoices7d: z.object({ unlocks: z.number(), declines: z.number() }).default({ unlocks: 0, declines: 0 }),
+  controlsUsed7d: z.number().default(0),
 })
 const runtime = z.object({
   node: z.string(), platform: z.string(), pid: z.number(), environment: z.string(), startedAt: z.string(),

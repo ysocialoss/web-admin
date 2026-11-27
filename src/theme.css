@@ -70,6 +70,10 @@
   /* Literal values: a var() here would resolve once at :root and ignore dark mode. */
   --app-accent: #171717;
   --app-chart: #737373;
+  --app-series-1: #257de0;
+  --app-series-2: #f47230;
+  --app-series-3: #00b894;
+  --app-chart-surface: #ffffff;
 }
 
 .bp6-dark,
@@ -104,6 +108,10 @@
   --app-border: #262626;
   --app-accent: #f5f5f5;
   --app-chart: #8a8a8a;
+  --app-series-1: #338ced;
+  --app-series-2: #e76624;
+  --app-series-3: #00a888;
+  --app-chart-surface: #191919;
 }
 
 body {

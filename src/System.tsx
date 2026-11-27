@@ -7,19 +7,19 @@ import {
 } from './systemApi'
 import type { SystemStatus } from './systemApi'
 
-function Facts({ items }: { items: [string, React.ReactNode][] }) {
+export function Facts({ items }: { items: [string, React.ReactNode][] }) {
   return <dl className="admin-facts">{items.map(([name, value]) => <div key={name}><dt className={Classes.TEXT_MUTED}>{name}</dt><dd>{value}</dd></div>)}</dl>
 }
 
-function Meter({ label, value, max, detail }: { label: string; value: number; max: number; detail: string }) {
+export function Meter({ label, value, max, detail, intent }: { label: string; value: number; max: number; detail: string; intent?: 'primary' | 'success' }) {
   const ratio = max > 0 ? Math.min(1, value / max) : 0
   return <div className="admin-meter">
     <div><span>{label}</span><span className={Classes.TEXT_MUTED}>{detail}</span></div>
-    <ProgressBar value={ratio} stripes={false} animate={false} intent={ratio > 0.9 ? 'danger' : ratio > 0.75 ? 'warning' : 'primary'} aria-label={label} />
+    <ProgressBar value={ratio} stripes={false} animate={false} intent={intent ?? (ratio > 0.9 ? 'danger' : ratio > 0.75 ? 'warning' : 'primary')} aria-label={label} />
   </div>
 }
 
-const Unavailable = () => <Callout intent="warning" icon="warning-sign">This section could not be loaded.</Callout>
+export const Unavailable = () => <Callout intent="warning" icon="warning-sign">This section could not be loaded.</Callout>
 
 export function ServiceTable({ services }: { services: SystemStatus['services'] }) {
   return <div className="overview-table-scroll">
@@ -35,7 +35,7 @@ export function ServiceTable({ services }: { services: SystemStatus['services'] 
   </div>
 }
 
-export default function System({ onAccessLost }: { onAccessLost: () => void }) {
+export default function System({ onAccessLost, onNavigate }: { onAccessLost: () => void; onNavigate?: (path: string) => void }) {
   const [auto, setAuto] = useState(true)
   const { data, error, loading, refresh } = useSystemStatus(onAccessLost, auto ? 15_000 : null)
 
@@ -49,11 +49,11 @@ export default function System({ onAccessLost }: { onAccessLost: () => void }) {
     </header>
     {error && <Callout intent="danger" role="alert">{error} <Button onClick={refresh}>Retry</Button></Callout>}
     {!data && !error && <><LoadingStatus label="Loading system status…" /><LoadingRows rows={6} /></>}
-    {data && <SystemBody data={data} />}
+    {data && <SystemBody data={data} onNavigate={onNavigate} />}
   </section>
 }
 
-function SystemBody({ data }: { data: SystemStatus }) {
+function SystemBody({ data, onNavigate }: { data: SystemStatus; onNavigate?: (path: string) => void }) {
   const overall = overallStatus(data.services)
   const { runtime, host } = { runtime: data.runtime, host: data.runtime.host }
   const memoryUsed = host.memoryTotal - host.memoryFree
@@ -167,19 +167,33 @@ function SystemBody({ data }: { data: SystemStatus }) {
       </Card>
 
       {feed && <Card className="admin-panel">
-        <header className="admin-toolbar"><H2>Feed data</H2></header>
+        <header className="admin-toolbar"><H2>Feed</H2></header>
         <div className="admin-panel-body">
           {available(feed) ? <>
+            <div className="admin-tag-row">
+              {feed.errors24h > 0
+                ? <Tag intent="danger" icon="error">{feed.errors24h} pipeline {feed.errors24h === 1 ? 'error' : 'errors'} in 24 hours</Tag>
+                : <Tag minimal intent="success" icon="tick-circle">No pipeline errors in 24 hours</Tag>}
+              {feed.fallbacks24h > 0 && <Tag intent="warning" icon="time">{feed.fallbacks24h} chronological {feed.fallbacks24h === 1 ? 'fallback' : 'fallbacks'}</Tag>}
+              {feed.latencyMs24h && feed.latencyMs24h.p95 > 150 && <Tag intent="warning" icon="warning-sign">p95 over 150 ms</Tag>}
+            </div>
             <Facts items={[
+              ['Rankings in 24 hours', `${feed.requests24h.personal.toLocaleString()} personal · ${feed.requests24h.public.toLocaleString()} public · ${feed.requests24h.following.toLocaleString()} Following logged`],
+              ['Latency in 24 hours', feed.latencyMs24h ? `p50 ${Math.round(feed.latencyMs24h.p50)} ms · p95 ${Math.round(feed.latencyMs24h.p95)} ms` : 'No rankings yet'],
+              ['Public cache hits', feed.publicCache24h.hits + feed.publicCache24h.misses ? `${Math.round(feed.publicCache24h.hits / (feed.publicCache24h.hits + feed.publicCache24h.misses) * 100)}% of ${feed.publicCache24h.hits + feed.publicCache24h.misses}` : 'n/a'],
+              ['Caught up in 24 hours', feed.caughtUp24h],
+              ['Feed choice', `${feed.optedIn} on · ${feed.optedOut} off · ${feed.undecided} not decided`],
+              ['From the Feed tab this week', `${feed.navChoices7d.unlocks} turned on · ${feed.navChoices7d.declines} declined`],
+              ['Feed controls used this week', feed.controlsUsed7d.toLocaleString()],
               ['Events recorded', `${feed.events.toLocaleString()} (${feed.events24h.toLocaleString()} in 24 hours)`],
               ['Tracked readers this week', feed.trackedUsers7d],
-              ['Personalization off', feed.personalizationOff],
             ]} />
             <div className="admin-chart-row">
               <BarChart data={feed.eventsByDay} label="Feed events, 14 days" unit="events" />
             </div>
             {feed.byType24h.length > 0 && <div className="admin-tag-row">{feed.byType24h.map(item =>
               <Tag key={item.type} minimal>{item.type.replaceAll('_', ' ')} · {item.count}</Tag>)}</div>}
+            {onNavigate && <Button variant="minimal" size="small" endIcon="arrow-right" onClick={() => onNavigate('/feed')}>Open feed dashboard</Button>}
           </> : <Unavailable />}
         </div>
       </Card>}
