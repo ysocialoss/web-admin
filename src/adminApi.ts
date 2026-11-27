@@ -228,7 +228,6 @@ const requestErrors = new Map([
   ['invalid_release', 'Enter a release tag of up to 128 characters.'],
   ['ground_required', 'Choose a ground and describe the facts. The user receives them as the statement of reasons.'],
   ['invalid_ground', 'Choose a valid terms clause or legal ground and describe the facts.'],
-  ['invalid_feed_config', 'Check the feed configuration: one of the values is out of range.'],
   ['invalid_content','Use up to 2,000 characters and no more than two blank lines in a row. A post without attachments needs text.'],
 ])
 

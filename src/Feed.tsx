@@ -1,6 +1,6 @@
-import { useState } from 'react'
+import { useState, type ReactNode } from 'react'
 import {
-  Button, ButtonGroup, Callout, Card, Classes, FormGroup, H1, H2, HTMLTable, InputGroup, NumericInput, Tag,
+  Button, ButtonGroup, Callout, Card, Classes, H1, H2, HTMLTable, Tag,
 } from '@blueprintjs/core'
 import { LoadingRows, LoadingStatus } from './LoadingState'
 import PostPreview from './PostPreview'
@@ -8,7 +8,7 @@ import SeriesChart from './SeriesChart'
 import CategoryChart from './CategoryChart'
 import { Facts, Meter, Unavailable } from './System'
 import { available, formatAge, formatBytes } from './systemApi'
-import { percent, saveFeedConfig, useFeedDashboard, type FeedConfig, type FeedControlsConfig, type FeedDashboard } from './feedApi'
+import { percent, useFeedDashboard, type FeedConfig, type FeedControlsConfig, type FeedDashboard } from './feedApi'
 
 const ranges = [7, 14, 30] as const
 const headLabels: Record<string, string> = {
@@ -47,11 +47,11 @@ export default function Feed({ onAccessLost }: { onAccessLost: () => void }) {
     </header>
     {error && <Callout intent="danger" role="alert">{error} <Button onClick={refresh}>Retry</Button></Callout>}
     {!data && !error && <><LoadingStatus label="Loading feed statistics…" /><LoadingRows rows={6} /></>}
-    {data && <FeedBody data={data} onSaved={refresh} />}
+    {data && <FeedBody data={data} />}
   </section>
 }
 
-function FeedBody({ data, onSaved }: { data: FeedDashboard; onSaved: () => void }) {
+function FeedBody({ data }: { data: FeedDashboard }) {
   const { adoption, pipeline, engagement, position, diversity, training, model, volume, controls } = data
   const { minUsers, minViewers } = data.thresholds
   return <>
@@ -211,7 +211,7 @@ function FeedBody({ data, onSaved }: { data: FeedDashboard; onSaved: () => void 
       <Card className="admin-panel admin-system-wide">
         <header className="admin-toolbar"><H2>Model and configuration</H2></header>
         <div className="admin-panel-body">
-          {available(model) ? <ModelPanel model={model} onSaved={onSaved} /> : <Unavailable />}
+          {available(model) ? <ModelPanel model={model} /> : <Unavailable />}
         </div>
       </Card>
     </div>
@@ -256,150 +256,78 @@ type ModelInfo = Extract<FeedDashboard['model'], { config: FeedConfig }>
 type ScalarKey = Exclude<keyof FeedConfig, 'weights' | 'controls'>
 type ControlNumberKey = Exclude<keyof FeedControlsConfig, 'freshnessScale' | 'repliesFactor' | 'discoveryFactor'>
 type ControlTableKey = 'discoveryFactor' | 'freshnessScale' | 'repliesFactor'
-const controlFields: { key: ControlNumberKey; label: string; step: number; min: number; max: number }[] = [
-  { key: 'interestedAuthor', label: 'Interested: author', step: 0.05, min: 0.05, max: 5 },
-  { key: 'interestedTopic', label: 'Interested: topics', step: 0.05, min: 0.05, max: 5 },
-  { key: 'notInterestedAuthor', label: 'Not interested: author', step: 0.05, min: 0.05, max: 5 },
-  { key: 'notInterestedTopic', label: 'Not interested: topics', step: 0.05, min: 0.05, max: 5 },
-  { key: 'topicMore', label: 'More about topic', step: 0.05, min: 0.05, max: 5 },
-  { key: 'topicLess', label: 'Fewer about topic', step: 0.05, min: 0.05, max: 5 },
-  { key: 'feedbackDays', label: 'Ratings last (days)', step: 1, min: 1, max: 365 },
-  { key: 'snoozeDays', label: 'Snooze lasts (days)', step: 1, min: 1, max: 365 },
+const controlFields: { key: ControlNumberKey; label: string }[] = [
+  { key: 'interestedAuthor', label: 'Interested: author' },
+  { key: 'interestedTopic', label: 'Interested: topics' },
+  { key: 'notInterestedAuthor', label: 'Not interested: author' },
+  { key: 'notInterestedTopic', label: 'Not interested: topics' },
+  { key: 'topicMore', label: 'More about topic' },
+  { key: 'topicLess', label: 'Fewer about topic' },
+  { key: 'feedbackDays', label: 'Ratings last (days)' },
+  { key: 'snoozeDays', label: 'Snooze lasts (days)' },
 ]
-const controlTables: { key: ControlTableKey; label: string; min: number; max: number }[] = [
-  { key: 'discoveryFactor', label: 'Discovery multiplier per step', min: 0, max: 5 },
-  { key: 'freshnessScale', label: 'Freshness half-life scale per step', min: 0.1, max: 10 },
-  { key: 'repliesFactor', label: 'Replies multiplier per step (0 hides replies)', min: 0, max: 5 },
+const controlTables: { key: ControlTableKey; label: string }[] = [
+  { key: 'discoveryFactor', label: 'Discovery multiplier per step' },
+  { key: 'freshnessScale', label: 'Freshness half-life scale per step' },
+  { key: 'repliesFactor', label: 'Replies multiplier per step (0 hides replies)' },
 ]
-const stepNames = ['lowest', 'lower', 'middle', 'higher', 'highest']
-const numberFields: { key: ScalarKey; label: string; step: number; min: number; max: number }[] = [
-  { key: 'epsilon', label: 'Exploration share', step: 0.01, min: 0, max: 0.5 },
-  { key: 'exploreFrom', label: 'Explore from position', step: 1, min: 0, max: 20 },
-  { key: 'windowHours', label: 'Window (hours)', step: 1, min: 12, max: 336 },
-  { key: 'wideWindowHours', label: 'Wide window (hours)', step: 1, min: 24, max: 720 },
-  { key: 'minCandidates', label: 'Widen below (candidates)', step: 10, min: 0, max: 600 },
-  { key: 'maxCandidates', label: 'Max candidates', step: 10, min: 50, max: 600 },
-  { key: 'storedCandidates', label: 'Stored per ranking', step: 10, min: 20, max: 200 },
-  { key: 'pageSize', label: 'Page size', step: 1, min: 5, max: 50 },
-  { key: 'freshnessHalfLifeHours', label: 'Freshness half-life (hours)', step: 1, min: 1, max: 168 },
-  { key: 'freshnessFloor', label: 'Freshness floor', step: 0.05, min: 0, max: 1 },
-  { key: 'seenPenalty', label: 'Seen 1 to 7 days ago', step: 0.05, min: 0, max: 1 },
-  { key: 'authorGap', label: 'Same author gap', step: 1, min: 1, max: 5 },
-  { key: 'authorMaxPer10', label: 'Same author per 10', step: 1, min: 1, max: 10 },
-  { key: 'publicCacheSeconds', label: 'Public cache (seconds)', step: 30, min: 0, max: 3600 },
-  { key: 'timeoutMs', label: 'Timeout (ms)', step: 100, min: 200, max: 10000 },
+const numberFields: { key: ScalarKey; label: string }[] = [
+  { key: 'epsilon', label: 'Exploration share' },
+  { key: 'exploreFrom', label: 'Explore from position' },
+  { key: 'windowHours', label: 'Window (hours)' },
+  { key: 'wideWindowHours', label: 'Wide window (hours)' },
+  { key: 'minCandidates', label: 'Widen below (candidates)' },
+  { key: 'maxCandidates', label: 'Max candidates' },
+  { key: 'storedCandidates', label: 'Stored per ranking' },
+  { key: 'pageSize', label: 'Page size' },
+  { key: 'freshnessHalfLifeHours', label: 'Freshness half-life (hours)' },
+  { key: 'freshnessFloor', label: 'Freshness floor' },
+  { key: 'seenPenalty', label: 'Seen 1 to 7 days ago' },
+  { key: 'authorGap', label: 'Same author gap' },
+  { key: 'authorMaxPer10', label: 'Same author per 10' },
+  { key: 'publicCacheSeconds', label: 'Public cache (seconds)' },
+  { key: 'timeoutMs', label: 'Timeout (ms)' },
 ]
 const weightKeys = ['comment', 'share', 'save', 'like', 'click', 'profile', 'dwell', 'follow', 'negative'] as const
 
-function changes(before: FeedConfig, after: FeedConfig) {
-  const list: string[] = []
-  for (const key of weightKeys)
-    if (before.weights[key] !== after.weights[key]) list.push(`Weight ${headLabels[key] ?? key}: ${before.weights[key]} → ${after.weights[key]}`)
-  for (const field of numberFields)
-    if (before[field.key] !== after[field.key]) list.push(`${field.label}: ${before[field.key]} → ${after[field.key]}`)
-  for (const field of controlFields)
-    if (before.controls[field.key] !== after.controls[field.key]) list.push(`${field.label}: ${before.controls[field.key]} → ${after.controls[field.key]}`)
-  for (const table of controlTables)
-    if (before.controls[table.key].join() !== after.controls[table.key].join())
-      list.push(`${table.label}: ${before.controls[table.key].join(', ')} → ${after.controls[table.key].join(', ')}`)
-  return list
+function shown(value: number | number[], fallback: number | number[]) {
+  const text = Array.isArray(value) ? value.join(', ') : String(value)
+  const same = Array.isArray(value) && Array.isArray(fallback) ? value.join() === fallback.join() : value === fallback
+  return same ? text : <>{text} <Tag minimal intent="warning">code default {Array.isArray(fallback) ? fallback.join(', ') : fallback}</Tag></>
 }
 
-function ModelPanel({ model, onSaved }: { model: ModelInfo; onSaved: () => void }) {
-  const [draft, setDraft] = useState<FeedConfig>(model.config)
-  const [note, setNote] = useState('')
-  const [confirming, setConfirming] = useState(false)
-  const [saving, setSaving] = useState(false)
-  const [message, setMessage] = useState<{ intent: 'success' | 'danger'; text: string } | null>(null)
-  const diff = changes(model.config, draft)
-  const invalid = draft.wideWindowHours < draft.windowHours
-  async function save() {
-    setSaving(true)
-    setMessage(null)
-    try {
-      await saveFeedConfig(draft, note.trim())
-      setMessage({ intent: 'success', text: 'Saved. Rankings use it within 30 seconds.' })
-      setConfirming(false)
-      setNote('')
-      onSaved()
-    } catch (cause) {
-      setMessage({ intent: 'danger', text: cause instanceof Error ? cause.message : 'Could not save the configuration.' })
-    } finally {
-      setSaving(false)
-    }
-  }
-  const setNumber = (key: ScalarKey, value: number) => setDraft(current => ({ ...current, [key]: value }))
-  const setControl = (key: ControlNumberKey, value: number) =>
-    setDraft(current => ({ ...current, controls: { ...current.controls, [key]: value } }))
-  const setStep = (key: ControlTableKey, index: number, value: number) => setDraft(current => {
-    const next = [...current.controls[key]] as FeedControlsConfig[ControlTableKey]
-    next[index] = value
-    return { ...current, controls: { ...current.controls, [key]: next } }
-  })
+function ModelPanel({ model }: { model: ModelInfo }) {
+  const { config, defaults } = model
   return <>
     <Facts items={[
       ['Active model', model.active ? <>Trained model <code>{model.active.id.slice(0, 8)}</code></> : <Tag minimal>Prior (hand-set weights)</Tag>],
       ['Feature set', `version ${model.featureVersion}, ${model.featureNames.length} features`],
       ['Configuration', model.configId ? <>Saved row <code>{model.configId.slice(0, 8)}</code></> : 'Code defaults'],
     ]} />
+    <p className={Classes.TEXT_MUTED}>
+      Ranking values are set in the API code and change only through review, because the public page <code>/legal/feed</code> publishes them.
+    </p>
     <details>
       <summary className={Classes.TEXT_MUTED}>Feature names</summary>
       <div className="admin-tag-row">{model.featureNames.map(name => <Tag key={name} minimal>{name}</Tag>)}</div>
     </details>
     <h3 className="admin-subheading">Value weights</h3>
-    <div className="admin-config-form">
-      {weightKeys.map(key => <FormGroup key={key} label={headLabels[key] ?? key} labelFor={`weight-${key}`}>
-        <NumericInput id={`weight-${key}`} fill min={0} max={50} stepSize={0.5} minorStepSize={0.1} value={draft.weights[key]}
-          onValueChange={value => Number.isFinite(value) && setDraft(current => ({ ...current, weights: { ...current.weights, [key]: value } }))} />
-      </FormGroup>)}
-    </div>
+    <Facts items={weightKeys.map(key => [headLabels[key] ?? key, shown(config.weights[key], defaults.weights[key])])} />
     <h3 className="admin-subheading">Ranking rules</h3>
-    <div className="admin-config-form">
-      {numberFields.map(field => <FormGroup key={field.key} label={field.label} labelFor={`config-${field.key}`}>
-        <NumericInput id={`config-${field.key}`} fill min={field.min} max={field.max} stepSize={field.step} minorStepSize={field.step < 1 ? 0.01 : null}
-          value={draft[field.key]} onValueChange={value => Number.isFinite(value) && setNumber(field.key, value)} />
-      </FormGroup>)}
-    </div>
+    <Facts items={numberFields.map(field => [field.label, shown(config[field.key], defaults[field.key])])} />
     <h3 className="admin-subheading">User controls</h3>
-    <div className="admin-config-form">
-      {controlFields.map(field => <FormGroup key={field.key} label={field.label} labelFor={`control-${field.key}`}>
-        <NumericInput id={`control-${field.key}`} fill min={field.min} max={field.max} stepSize={field.step} minorStepSize={field.step < 1 ? 0.01 : null}
-          value={draft.controls[field.key]} onValueChange={value => Number.isFinite(value) && setControl(field.key, value)} />
-      </FormGroup>)}
-    </div>
-    {controlTables.map(table => <fieldset key={table.key} className="admin-config-steps">
-      <legend>{table.label}</legend>
-      <div className="admin-config-form">
-        {draft.controls[table.key].map((value, index) => <FormGroup key={index} label={stepNames[index]} labelFor={`control-${table.key}-${index}`}>
-          <NumericInput id={`control-${table.key}-${index}`} fill min={table.min} max={table.max} stepSize={0.1} minorStepSize={0.01}
-            value={value} onValueChange={next => Number.isFinite(next) && setStep(table.key, index, next)} />
-        </FormGroup>)}
-      </div>
-    </fieldset>)}
-    {invalid && <Callout intent="warning">The wide window has to be at least as long as the normal window.</Callout>}
-    {message && <Callout intent={message.intent} role={message.intent === 'danger' ? 'alert' : 'status'}>{message.text}</Callout>}
-    {confirming && diff.length > 0 ? <Callout intent="primary" title="Review the changes">
-      <ul className="admin-diff">{diff.map(line => <li key={line}>{line}</li>)}</ul>
-      <FormGroup label="Note for the activity log (optional)" labelFor="config-note">
-        <InputGroup id="config-note" maxLength={200} value={note} onChange={event => setNote(event.currentTarget.value)} />
-      </FormGroup>
-      <div className="admin-heading-actions">
-        <Button intent="primary" loading={saving} onClick={() => void save()}>Save configuration</Button>
-        <Button variant="minimal" onClick={() => setConfirming(false)}>Back</Button>
-      </div>
-    </Callout> : <div className="admin-heading-actions">
-      <Button intent="primary" disabled={!diff.length || invalid} onClick={() => setConfirming(true)}>Review {diff.length || ''} {diff.length === 1 ? 'change' : 'changes'}</Button>
-      <Button variant="minimal" disabled={!diff.length} onClick={() => setDraft(model.config)}>Discard</Button>
-      <Button variant="minimal" icon="reset" onClick={() => setDraft(model.defaults)}>Load defaults</Button>
-    </div>}
-    <details>
-      <summary className={Classes.TEXT_MUTED}>Change history ({model.history.length})</summary>
-      {model.history.length ? <HTMLTable compact striped className="overview-table">
+    <Facts items={[
+      ...controlFields.map((field): [string, ReactNode] => [field.label, shown(config.controls[field.key], defaults.controls[field.key])]),
+      ...controlTables.map((table): [string, ReactNode] => [table.label, shown(config.controls[table.key], defaults.controls[table.key])]),
+    ]} />
+    {model.history.length > 0 && <details>
+      <summary className={Classes.TEXT_MUTED}>Saved configuration rows ({model.history.length})</summary>
+      <HTMLTable compact striped className="overview-table">
         <thead><tr><th scope="col">When</th><th scope="col">By</th><th scope="col">Row</th></tr></thead>
         <tbody>{model.history.map(row => <tr key={row.id}>
           <td>{formatAge(row.createdAt)} ago</td><td>{row.handle ? `@${row.handle}` : 'unknown'}</td><td><code>{row.id.slice(0, 8)}</code></td>
         </tr>)}</tbody>
-      </HTMLTable> : <p className={Classes.TEXT_MUTED}>No saved configuration yet; the code defaults apply.</p>}
-    </details>
+      </HTMLTable>
+    </details>}
   </>
 }

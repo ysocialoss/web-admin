@@ -163,13 +163,4 @@ export function useFeedDashboard(days: number, onAccessLost: () => void) {
   return { ...state, refresh }
 }
 
-export async function saveFeedConfig(config: FeedConfig, note: string) {
-  const raw = await adminRequest('/api/admin/feed/config', undefined, {
-    method: 'PUT',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(note ? { config, note } : { config }),
-  })
-  return z.object({ id: z.string(), config: feedConfigSchema }).parse(raw)
-}
-
 export const percent = (value: number | null, digits = 0) => value === null ? 'n/a' : `${(value * 100).toFixed(digits)}%`
